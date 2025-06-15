@@ -84,4 +84,9 @@ export class UploadController {
     this.logger.log('ping');
     return 'pong';
   }
+
+  @Get('delete-entry')
+  async deleteEntry(@Query('liveName') liveName: string, @Query('uploadId') uploadId: number) {
+    return await this.uploadService.deleteEntry(liveName, uploadId);
+  }
 }

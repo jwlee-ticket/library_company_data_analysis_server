@@ -377,4 +377,65 @@ export class UploadService {
     }
   }
 
+  async deleteEntry(liveName: string, uploadId: number) {
+    try {
+
+      const live = await this.liveRepository.findOne({ where: { liveName }, relations: ['uploadFile'] });
+
+      if (!live) {
+        return {
+          status: false,
+          message: '해당하는 공연 정보가 없습니다.',
+        };
+      }
+
+      if (live.category === '콘서트') {
+        const concertUpload = await this.uploadRepository.findOne({ where: { id: uploadId }, relations: ['live', 'concertSaleData', 'concertSeatSaleData'] });
+        if (concertUpload) {
+          await this.deleteFile(concertUpload.id);
+          await this.concertTicketSaleRepository.remove(concertUpload.concertSaleData);
+          await this.concertSeatSaleRepository.remove(concertUpload.concertSeatSaleData);
+          await this.uploadRepository.remove(concertUpload);
+        }
+      } else {
+        const upload = await this.uploadRepository.findOne({ where: { id: uploadId }, relations: ['live', 'dailySaleData', 'showSaleData'] });
+        if (upload) {
+          await this.deleteFile(upload.id);
+          await this.playDailySaleRepository.remove(upload.dailySaleData);
+          await this.playTurnSaleRepository.remove(upload.showSaleData);
+          await this.uploadRepository.remove(upload);
+        }
+      }
+
+      const receckLive = await this.liveRepository.findOne({ where: { liveName }, relations: ['uploadFile'] });
+
+
+      if (receckLive.uploadFile.length === 0) {
+        receckLive.latestRecordDate = null;
+        await this.liveRepository.save(receckLive);
+      } else {
+        const latestUploadRecordDate = receckLive.uploadFile.sort((a, b) => a.recordDate > b.recordDate ? -1 : a.recordDate < b.recordDate ? 1 : 0)[0].recordDate;
+
+        if (receckLive.latestRecordDate !== latestUploadRecordDate) {
+          receckLive.latestRecordDate = latestUploadRecordDate;
+          await this.liveRepository.save(receckLive);
+        }
+      }
+
+      return {
+        code: 200,
+        status: true,
+        message: '해당하는 공연 정보가 삭제되었습니다.',
+      };
+
+    } catch (error) {
+      this.logger.error(error);
+      return {
+        code: 400,
+        status: false,
+        message: '해당하는 공연 정보가 삭제되지 않았습니다.',
+      };
+    }
+  }
+
 }
