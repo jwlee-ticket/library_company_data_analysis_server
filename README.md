@@ -108,107 +108,404 @@ pm2 start all
 
 ## 시스템 아키텍처
 
-### 전체 시스템 구조
+### 1. 프로젝트 전체 구조도
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   클라이언트     │────│   NestJS API     │────│   PostgreSQL    │
-│   (Frontend)    │    │   서버 (3001)    │    │   데이터베이스   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                              │
-                    ┌─────────┼─────────┐
-                    │         │         │
-             ┌──────▼──┐ ┌───▼───┐ ┌───▼────┐
-             │ AdminJS │ │ Slack │ │ OpenAI │
-             │  관리자  │ │  알림  │ │   AI   │
-             └─────────┘ └───────┘ └────────┘
-```
-
-### 데이터베이스 스키마
-
-#### 핵심 엔터티
-
-**LiveModel (공연 정보)**
-- 콘서트, 연극/뮤지컬 공연 메타데이터
-- 공연 일정, 좌석 수, 목표 지표 등
-- 모든 매출 데이터의 중심 연결점
-
-**FileUploadModel (파일 업로드)**
-- 엑셀/CSV 매출 데이터 업로드 관리
-- LiveModel과 연결되어 공연별 데이터 추적
-
-**매출 데이터 엔터티**
-- `PlayTicketSaleModel`: 연극 일별 매출
-- `PlayShowSaleModel`: 연극 회차별 매출  
-- `ConcertTicketSaleModel`: 콘서트 일별 매출
-- `ConcertSeatSaleModel`: 콘서트 좌석별 매출
-
-#### 관리 엔터티
-
-**UserModel (사용자 관리)**
-- 역할 기반 접근 제어 (마스터/관리자/일반)
-- 공연별 권한 관리
-- 파일 업로드 권한 설정
-
-**목표 및 계획 엔터티**
-- `DailyTargetModel`: 일별 매출 목표
-- `WeeklyMarketingCalendarModel`: 주간 마케팅 계획
-- `CalendarModel`: 일반 캘린더 정보
-- `MonthlyEtcModel`: 월별 기타 정보
-
-#### 뷰 엔터티 (리포트용)
-
-**연극 분석 뷰**
-- `ViewLlmPlayDaily`: 일별 연극 데이터
-- `ViewLlmPlayWeeklyA/B/C/D`: 다양한 주간 연극 분석
-- `ViewLlmPlayEstProfit`: 연극 수익성 예측
-
-**콘서트 분석 뷰**
-- `ViewConAllDaily`: 콘서트 일별 데이터
-- `ViewConAllOverview`: 콘서트 전체 개요
-- `ViewConBep`: 콘서트 손익분기점 분석
-- `ViewConTargetSales`: 콘서트 목표 매출 대비 분석
-
-### API 모듈 구조
-
-#### 데이터 관리 모듈
-- **UploadModule**: 파일 업로드 및 데이터 처리
-- **LiveModule**: 공연 정보 관리
-- **PlayModule**: 연극 데이터 관리  
-- **ConcertModule**: 콘서트 데이터 관리
-- **UsersModule**: 사용자 및 권한 관리
-
-#### 분석 및 리포트 모듈
-- **ReportModule**: 각종 리포트 및 분석 데이터 제공
-- **ViewModule**: 데이터 뷰 관리
-- **TargetModule**: 목표 설정 및 관리
-- **MarketingModule**: 마케팅 캘린더 관리
-
-#### 연동 모듈
-- **SlackModule**: Slack 알림 연동
-- **LocalScheduleModule**: 스케줄링 작업 관리
-- **CalendarModule**: 캘린더 기능
-
-### 데이터 플로우
-
-```
-1. 엑셀/CSV 파일 업로드
-   ↓
-2. FileUploadModel에 메타데이터 저장
-   ↓  
-3. 파일 파싱 후 매출 데이터 저장
-   ↓
-4. 데이터베이스 뷰를 통한 집계
-   ↓
-5. API를 통한 리포트 제공
+```mermaid
+graph TD
+    %% 클라이언트 및 사용자
+    A[클라이언트<br/>Frontend] --> B[NestJS API 서버<br/>Port 3001]
+    A1[관리자] --> A2[AdminJS<br/>관리 패널]
+    A2 --> B
+    
+    %% API 서버 모듈들
+    B --> C[데이터 관리 모듈]
+    B --> D[분석 및 리포트 모듈]
+    B --> E[연동 모듈]
+    
+    %% 데이터 관리 모듈
+    C --> C1[UploadModule<br/>파일 업로드]
+    C --> C2[LiveModule<br/>공연 관리]
+    C --> C3[PlayModule<br/>연극 데이터]
+    C --> C4[ConcertModule<br/>콘서트 데이터]
+    C --> C5[UsersModule<br/>사용자 관리]
+    
+    %% 분석 및 리포트 모듈
+    D --> D1[ReportModule<br/>리포트 생성]
+    D --> D2[ViewModule<br/>데이터 뷰]
+    D --> D3[TargetModule<br/>목표 관리]
+    D --> D4[MarketingModule<br/>마케팅 캘린더]
+    
+    %% 연동 모듈
+    E --> E1[SlackModule<br/>알림 연동]
+    E --> E2[LocalScheduleModule<br/>스케줄링]
+    E --> E3[CalendarModule<br/>캘린더]
+    
+    %% 데이터베이스
+    C1 --> F[PostgreSQL<br/>Port 1377]
+    C2 --> F
+    C3 --> F
+    C4 --> F
+    C5 --> F
+    D1 --> F
+    D2 --> F
+    D3 --> F
+    D4 --> F
+    
+    %% 외부 서비스
+    E1 --> G[Slack<br/>Webhook]
+    B --> H[OpenAI API<br/>AI 기능]
+    
+    %% 파일 시스템
+    C1 --> I[uploads/<br/>엑셀 파일 저장<br/>85개+ 파일]
+    
+    %% 데이터 플로우
+    J[엑셀/CSV 업로드] --> C1
+    C1 --> K[파일 파싱]
+    K --> F
+    F --> L[데이터베이스 뷰]
+    L --> D1
+    D1 --> M[리포트 API]
+    
+    %% 스타일링
+    classDef client fill:#e1f5fe
+    classDef api fill:#f3e5f5
+    classDef module fill:#e8f5e8
+    classDef database fill:#fff3e0
+    classDef external fill:#fce4ec
+    classDef files fill:#f1f8e9
+    
+    class A,A1,A2 client
+    class B api
+    class C,D,E,C1,C2,C3,C4,C5,D1,D2,D3,D4,E1,E2,E3 module
+    class F database
+    class G,H external
+    class I,J,K,L,M files
 ```
 
-### 보안 및 권한
+### 2. 인프라 시스템 구조도
 
+```mermaid
+graph TB
+    subgraph "Internet"
+        U["사용자<br/>API 클라이언트"]
+        DEV["개발자<br/>SSH 접속"]
+    end
+    
+    subgraph "GCP Project"
+        subgraph "Network Security"
+            FW1["방화벽 규칙<br/>allow-ssh<br/>TCP: 22<br/>Source: 0.0.0.0/0"]
+            FW2["방화벽 규칙<br/>allow-api<br/>TCP: 3001<br/>Source: 0.0.0.0/0"]
+            FW3["내부 전용<br/>PostgreSQL<br/>TCP: 1377<br/>Local only"]
+        end
+        
+        subgraph "us-central1-a Zone"
+            VM["VM Instance<br/>instance-20250211-224503<br/>e2-micro (1GB RAM, 1 vCPU)<br/>External: 35.208.29.100<br/>Internal: 10.128.0.2<br/>Ubuntu 22.04.5 LTS"]
+            
+            subgraph "Runtime Environment"
+                NODE["Node.js v20.18.3<br/>npm v10.8.2<br/>PM2 v5.4.3"]
+                DOCKER["Docker v27.5.1<br/>Docker Compose v2.32.4"]
+            end
+            
+            subgraph "Process Management"
+                PM2["PM2 Process Manager<br/>클러스터 모드<br/>24일 무중단 운영<br/>자동 재시작 활성화"]
+                
+                subgraph "Application"
+                    API["NestJS API 서버<br/>Port: 3001<br/>Process ID: 63357<br/>Memory: 111.4MB<br/>Heap Usage: 85.84%"]
+                    ADMIN["AdminJS<br/>관리자 패널<br/>통합 운영"]
+                end
+                
+                LOG_ROTATE["pm2-logrotate<br/>로그 자동 관리<br/>Max: 10MB<br/>Retain: 7일"]
+            end
+            
+            subgraph "Container Services"
+                POSTGRES_CONTAINER["Docker Container<br/>libraryPostgres<br/>postgres:15<br/>Port: 1377:5432<br/>3주간 안정 운영"]
+                
+                subgraph "Database"
+                    PG_DB["PostgreSQL 15<br/>Database: libraryPostgres<br/>User: libraryPostgres<br/>Timezone: Asia/Seoul"]
+                    PG_VIEWS["Database Views<br/>연극/콘서트 분석 뷰<br/>30+ 분석 뷰 운영"]
+                end
+            end
+            
+            subgraph "File System"
+                UPLOADS["uploads/<br/>85개+ 엑셀 파일<br/>약 80MB<br/>최신: 158.xlsx"]
+                PG_DATA["postgres-data/<br/>영속 볼륨<br/>데이터베이스 저장소"]
+                BACKUP["backup_20250615_024839.sql<br/>정기 백업 파일<br/>자동 백업 스크립트"]
+                LOGS["~/.pm2/logs/<br/>app-out-1.log<br/>app-error-1.log<br/>자동 로테이션"]
+            end
+        end
+        
+        subgraph "Resource Monitoring"
+            DISK["디스크 사용량<br/>29GB 총 용량<br/>16GB 사용 (53%)<br/>14GB 여유공간"]
+            MEMORY["메모리 사용량<br/>958MB 총 메모리<br/>494MB 사용<br/>296MB 사용가능"]
+            CPU["CPU 사용률<br/>1 vCPU<br/>평균 0% (유휴)"]
+        end
+    end
+    
+    subgraph "External Services"
+        SLACK["Slack<br/>Webhook API<br/>알림 서비스<br/>실시간 알림"]
+        OPENAI["OpenAI API<br/>GPT Integration<br/>AI 기능 제공"]
+    end
+    
+    subgraph "Development Workflow"
+        GIT["Git Repository<br/>develop branch<br/>코드 버전 관리"]
+        SSH_KEY["SSH Key<br/>/Users/tikes-seukweeo/.ssh/library_company<br/>키 기반 인증"]
+    end
+    
+    %% Network Connections
+    U --> FW2
+    FW2 --> VM
+    VM --> API
+    
+    DEV --> SSH_KEY
+    SSH_KEY --> FW1
+    FW1 --> VM
+    
+    %% Internal Services
+    VM --> NODE
+    VM --> DOCKER
+    NODE --> PM2
+    PM2 --> API
+    PM2 --> LOG_ROTATE
+    DOCKER --> POSTGRES_CONTAINER
+    POSTGRES_CONTAINER --> PG_DB
+    PG_DB --> PG_VIEWS
+    
+    %% File System Access
+    API --> UPLOADS
+    POSTGRES_CONTAINER --> PG_DATA
+    PG_DB --> BACKUP
+    PM2 --> LOGS
+    
+    %% External Service Connections
+    API --> SLACK
+    API --> OPENAI
+    
+    %% Development Workflow
+    DEV --> GIT
+    GIT -.-> VM
+    
+    %% Internal Database Connection
+    API --> FW3
+    FW3 --> POSTGRES_CONTAINER
+    
+    %% Monitoring
+    VM --> DISK
+    VM --> MEMORY
+    VM --> CPU
+    
+    %% Styling
+    classDef gcp fill:#4285f4,stroke:#333,stroke-width:2px,color:#fff
+    classDef vm fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
+    classDef app fill:#ea4335,stroke:#333,stroke-width:2px,color:#fff
+    classDef database fill:#0f9d58,stroke:#333,stroke-width:2px,color:#fff
+    classDef security fill:#ff6b35,stroke:#333,stroke-width:2px,color:#fff
+    classDef external fill:#fbbc04,stroke:#333,stroke-width:2px,color:#000
+    classDef monitoring fill:#9c27b0,stroke:#333,stroke-width:2px,color:#fff
+    
+    class VM gcp
+    class NODE,DOCKER,PM2,API,ADMIN vm
+    class POSTGRES_CONTAINER,PG_DB,PG_VIEWS,BACKUP app
+    class UPLOADS,PG_DATA,LOGS database
+    class FW1,FW2,FW3,SSH_KEY security
+    class U,DEV,SLACK,OPENAI,GIT external
+    class DISK,MEMORY,CPU,LOG_ROTATE monitoring
+```
+
+### 3. 데이터베이스 ERD
+
+```mermaid
+erDiagram
+    %% 핵심 엔터티
+    LiveModel {
+        int id PK
+        string liveId UK "고유 공연 ID"
+        string category "콘서트/뮤지컬"
+        boolean isLive "활성 상태"
+        string liveName "공연명"
+        string location "장소"
+        date showStartDate "공연 시작일"
+        date showEndDate "공연 종료일"
+        date saleStartDate "판매 시작일"
+        date saleEndDate "판매 종료일"
+        int runningTime "러닝타임"
+        decimal targetShare "목표 점유율"
+        bigint bep "손익분기점"
+        int showTotalSeatNumber "총 좌석수"
+        date latestRecordDate "최신 기록일"
+        date createdAt
+    }
+    
+    FileUploadModel {
+        int id PK
+        string fileName "파일명"
+        date recordDate "기록일"
+        string liveId FK "공연 ID"
+        string uploadBy "업로드자"
+        boolean isSavedFile "저장 여부"
+        date uploadDate "업로드일"
+        date deleteDate "삭제일"
+    }
+    
+    %% 사용자 관리
+    UserModel {
+        int id PK
+        string email UK "이메일"
+        string password "비밀번호"
+        string name UK "사용자명"
+        int role "권한(0:마스터,1:관리자,2:일반)"
+        boolean isFileUploader "파일업로드 권한"
+        boolean isLiveManager "공연관리 권한"
+        text[] liveNameList "접근가능 공연목록"
+        boolean status "활성상태"
+        date createdAt
+        date updatedAt
+    }
+    
+    %% 연극 매출 데이터
+    PlayTicketSaleModel {
+        int id PK
+        int playUploadId FK "업로드 파일 ID"
+        string liveId "공연 ID"
+        date recordDate "기록일"
+        date salesDate "판매일"
+        bigint sales "매출액"
+        int paidSeatTot "유료 총 좌석"
+        int inviteSeatTot "초대 총 좌석"
+    }
+    
+    PlayShowSaleModel {
+        int id PK
+        int playUploadId FK "업로드 파일 ID"
+        string liveId "공연 ID"
+        date recordDate "기록일"
+        datetime showDateTime "공연일시"
+        text[] cast "출연진"
+        int paidSeatSales "유료매출"
+        int paidSeatTot "유료 총 좌석"
+        int paidSeatVip "유료 VIP"
+        int paidSeatA "유료 A석"
+        int paidSeatS "유료 S석"
+        int paidSeatR "유료 R석"
+        int inviteSeatTot "초대 총 좌석"
+        decimal depositShare "예약금 점유율"
+        decimal paidShare "완납 점유율"
+        decimal freeShare "무료 점유율"
+    }
+    
+    %% 콘서트 매출 데이터
+    ConcertTicketSaleModel {
+        int id PK
+        int concertUploadId FK "업로드 파일 ID"
+        string liveId "공연 ID"
+        date recordDate "기록일"
+        date salesDate "판매일"
+        bigint sales "매출액"
+        int paidSeatTot "유료 총 좌석"
+    }
+    
+    ConcertSeatSaleModel {
+        int id PK
+        int concertUploadId FK "업로드 파일 ID"
+        string liveId "공연 ID"
+        date recordDate "기록일"
+        datetime showDateTime "공연일시"
+        int paidSeatR "유료 R석"
+        int paidSeatS "유료 S석"
+        int paidSeatA "유료 A석"
+        int paidSeatB "유료 B석"
+        int paidSeatVip "유료 VIP"
+        int paidSeatTot "유료 총 좌석"
+        int inviteSeatTot "초대 총 좌석"
+    }
+    
+    %% 목표 및 계획
+    DailyTargetModel {
+        int id PK
+        string liveId FK "공연 ID"
+        date date "날짜"
+        int target "목표값"
+        date createdAt
+    }
+    
+    WeeklyMarketingCalendarModel {
+        int id PK
+        string liveId FK "공연 ID"
+        int weekNumber "주차"
+        date weekStartDate "주 시작일"
+        date weekEndDate "주 종료일"
+        text salesMarketing "영업마케팅"
+        text promotion "프로모션"
+        text etc "기타사항"
+        date createdAt
+    }
+    
+    CalendarModel {
+        int id PK
+        date date "날짜"
+        string noteSales "영업 메모"
+        string noteMarketing "마케팅 메모"
+        string noteOthers "기타 메모"
+        date createdAt
+    }
+    
+    MonthlyEtcModel {
+        int id PK
+        int year "연도"
+        int month "월"
+        text etc "기타사항"
+        date updatedAt
+    }
+    
+    %% 리포트 뷰 (예시)
+    ViewLlmPlayDaily {
+        string liveId "공연 ID"
+        string liveName "공연명"
+        date recordDate "기록일"
+        int dailySales "일별매출"
+        int paidSeatTot "유료좌석"
+        decimal paidShare "완납점유율"
+    }
+    
+    ViewConAllDaily {
+        string live_id "공연 ID"
+        string live_name "공연명"
+        date record_date "기록일"
+        int daily_sales_ticket_no "일별판매티켓수"
+        bigint daily_sales_amount "일별매출액"
+    }
+    
+    %% 관계 정의
+    LiveModel ||--o{ FileUploadModel : "업로드 파일"
+    LiveModel ||--o{ DailyTargetModel : "일별 목표"
+    LiveModel ||--o{ WeeklyMarketingCalendarModel : "마케팅 계획"
+    
+    FileUploadModel ||--o{ PlayTicketSaleModel : "연극 일별 매출"
+    FileUploadModel ||--o{ PlayShowSaleModel : "연극 회차별 매출"
+    FileUploadModel ||--o{ ConcertTicketSaleModel : "콘서트 일별 매출"
+    FileUploadModel ||--o{ ConcertSeatSaleModel : "콘서트 좌석별 매출"
+    
+    %% 뷰는 실제 테이블에서 데이터를 가져옴 (참조 관계)
+    LiveModel ||--o{ ViewLlmPlayDaily : "연극 일별 분석"
+    LiveModel ||--o{ ViewConAllDaily : "콘서트 일별 분석"
+```
+
+### 아키텍처 특징
+
+#### 데이터 플로우
+1. **파일 업로드**: 엑셀/CSV → FileUploadModel 메타데이터 저장
+2. **데이터 파싱**: 매출 데이터 파싱 → 각 엔터티별 저장
+3. **뷰 생성**: 복잡한 집계 쿼리를 뷰로 최적화
+4. **API 제공**: ReportModule을 통한 분석 데이터 제공
+
+#### 보안 및 권한
 - **역할 기반 접근 제어**: 마스터(0), 관리자(1), 일반사용자(2)
 - **공연별 권한**: 사용자별 접근 가능한 공연 리스트 관리
-- **파일 업로드 권한**: `isFileUploader` 플래그로 제어
-- **공연 관리 권한**: `isLiveManager` 플래그로 제어
+- **기능별 권한**: 파일 업로드, 공연 관리 권한 분리
+
+#### 확장성 고려사항
+- **모듈 분리**: 각 기능별 독립적인 모듈 구조
+- **데이터베이스 뷰**: 복잡한 분석 쿼리의 성능 최적화
+- **외부 연동**: Slack, OpenAI 등 확장 가능한 API 연동
 
 ## 개발 환경 설정
 
@@ -818,21 +1115,6 @@ TYPEORM_SYNCHRONIZE=true → false      # 데이터 안전성
 - 로그 로테이션 주기 점검
 - 불필요한 파일 정리
 ```
-
-### 배포 체크리스트 (검증된 절차)
-
-#### 배포 전 확인사항
-- [ ] 로컬 테스트 완료
-- [ ] PM2 상태 확인 (`pm2 list`)
-- [ ] PostgreSQL 연결 확인
-- [ ] 디스크 여유공간 확인 (`df -h`)
-
-#### 배포 후 확인사항  
-- [ ] API 응답 확인 (`curl -I http://localhost:3001`)
-- [ ] DB 연결 확인 (`docker exec libraryPostgres pg_isready`)
-- [ ] PM2 프로세스 상태 (`pm2 show app`)
-- [ ] 로그 에러 확인 (`pm2 logs app --lines 10`)
-- [ ] uploads 디렉토리 권한 확인
 
 ### 문제 해결 (실제 운영 경험 기반)
 
