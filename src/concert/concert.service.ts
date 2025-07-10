@@ -12,6 +12,7 @@ import { ViewConBep } from '../report/entities/view_con_bep.entity';
 import { ViewConEstProfit } from '../report/entities/view_con_est_profit.entity';
 import { ViewConTargetSales } from '../report/entities/view_con_target_sales.entity';
 import { ViewConWeeklyMarketingCalendar } from '../report/entities/view_con_weekly_marketing_calendar.entity';
+import { ViewConAllWeekly } from '../report/entities/view_con_all_weekly.entity';
 @Injectable()
 export class ConcertService {
     private readonly logger = new Logger(ConcertService.name);
@@ -33,6 +34,8 @@ export class ConcertService {
         private viewConTargetSalesRepository: Repository<ViewConTargetSales>,
         @InjectRepository(ViewConWeeklyMarketingCalendar)
         private viewConWeeklyMarketingCalendarRepository: Repository<ViewConWeeklyMarketingCalendar>,
+        @InjectRepository(ViewConAllWeekly)
+        private viewConAllWeeklyRepository: Repository<ViewConAllWeekly>,
     ) { }
 
 
@@ -496,5 +499,12 @@ export class ConcertService {
         `;
         
         return this.viewConAllDailyRepository.query(query);
+    }
+
+    // 콘서트 주간 매출 데이터
+    async getConAllWeekly(): Promise<ViewConAllWeekly[]> {
+        return this.viewConAllWeeklyRepository.find({
+            order: { liveId: 'ASC', recordWeek: 'DESC' }
+        });
     }
 }

@@ -57,4 +57,11 @@ export class ConcertController {
   async getConMonthly() {
     return this.concertService.getConMonthly();
   }
+
+  @Get('weekly')
+  @ApiOperation({ summary: '콘서트 주간 매출 데이터' })
+  @ApiResponse({ status: 200, description: '콘서트 주간 매출 데이터 목록 (매출, 판매수, 마케팅 활동 포함)' })
+  async getConAllWeekly() {
+    return this.concertService.getConAllWeekly();
+  }
 }
