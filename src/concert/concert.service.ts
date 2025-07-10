@@ -6,6 +6,12 @@ import { ConcertTicketSaleModel } from './entities/concert-ticket-sale.entity';
 import { ConcertSeatSaleModel } from './entities/concert-seat-sale.entity';
 import * as XLSX from 'xlsx';
 import { FileUploadModel } from 'src/upload/entities/file-upload.entity';
+import { ViewConAllDaily } from '../report/entities/view_con_all_daily.entity';
+import { ViewConAllOverview } from '../report/entities/view_con_all_overview.entity';
+import { ViewConBep } from '../report/entities/view_con_bep.entity';
+import { ViewConEstProfit } from '../report/entities/view_con_est_profit.entity';
+import { ViewConTargetSales } from '../report/entities/view_con_target_sales.entity';
+import { ViewConWeeklyMarketingCalendar } from '../report/entities/view_con_weekly_marketing_calendar.entity';
 @Injectable()
 export class ConcertService {
     private readonly logger = new Logger(ConcertService.name);
@@ -15,6 +21,18 @@ export class ConcertService {
         private readonly concertTicketSaleRepository: Repository<ConcertTicketSaleModel>,
         @InjectRepository(ConcertSeatSaleModel)
         private readonly concertSeatSaleRepository: Repository<ConcertSeatSaleModel>,
+        @InjectRepository(ViewConAllDaily)
+        private viewConAllDailyRepository: Repository<ViewConAllDaily>,
+        @InjectRepository(ViewConAllOverview)
+        private viewConAllOverviewRepository: Repository<ViewConAllOverview>,
+        @InjectRepository(ViewConBep)
+        private viewConBepRepository: Repository<ViewConBep>,
+        @InjectRepository(ViewConEstProfit)
+        private viewConEstProfitRepository: Repository<ViewConEstProfit>,
+        @InjectRepository(ViewConTargetSales)
+        private viewConTargetSalesRepository: Repository<ViewConTargetSales>,
+        @InjectRepository(ViewConWeeklyMarketingCalendar)
+        private viewConWeeklyMarketingCalendarRepository: Repository<ViewConWeeklyMarketingCalendar>,
     ) { }
 
 
@@ -422,5 +440,61 @@ export class ConcertService {
         } finally {
             await queryRunner.release(); // 쿼리 러너 리소스 해제
         }
+    }
+
+    // 콘서트 일일 매출 데이터
+    async getConAllDaily(): Promise<ViewConAllDaily[]> {
+        return this.viewConAllDailyRepository.find({
+            order: { liveId: 'ASC', recordDate: 'DESC' }
+        });
+    }
+
+    // 콘서트 전체 개요 (어제/누적/주간 매출)
+    async getConAllOverview(): Promise<ViewConAllOverview[]> {
+        return this.viewConAllOverviewRepository.find();
+    }
+
+    // 콘서트 예상 수익
+    async getConEstProfit(): Promise<ViewConEstProfit[]> {
+        return this.viewConEstProfitRepository.find({
+            order: { liveName: 'ASC' }
+        });
+    }
+
+    // 콘서트 목표 매출
+    async getConTargetSales(): Promise<ViewConTargetSales[]> {
+        return this.viewConTargetSalesRepository.find({
+            order: { liveName: 'ASC' }
+        });
+    }
+
+    // 콘서트 BEP (손익분기점) 분석
+    async getConBep(): Promise<ViewConBep[]> {
+        return this.viewConBepRepository.find({
+            order: { liveName: 'ASC', seatOrder: 'ASC' }
+        });
+    }
+
+    // 콘서트 주간 마케팅 캘린더
+    async getConWeeklyMarketingCalendar(): Promise<ViewConWeeklyMarketingCalendar[]> {
+        return this.viewConWeeklyMarketingCalendarRepository.find({
+            order: { liveName: 'ASC', weekStartDate: 'DESC' }
+        });
+    }
+
+    // 콘서트 월간 매출 데이터 (그래프용)
+    async getConMonthly() {
+        const query = `
+            SELECT 
+                live_id as "liveId",
+                live_name as "liveName",
+                record_month as "recordMonth",
+                SUM(daily_sales_amount) as "monthlySalesAmount"
+            FROM view_con_all_daily
+            GROUP BY live_id, live_name, record_month
+            ORDER BY live_id, record_month DESC
+        `;
+        
+        return this.viewConAllDailyRepository.query(query);
     }
 }

@@ -29,6 +29,7 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/schedule": "^5.0.0",
+    "@nestjs/swagger": "^7.4.2",
     "@nestjs/terminus": "^11.0.0",
     "@nestjs/typeorm": "^11.0.0",
     "adm-zip": "^0.5.16",
@@ -50,6 +51,7 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "selenium-webdriver": "^4.29.0",
+    "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.20",
     "xlsx": "^0.18.5"
   },
