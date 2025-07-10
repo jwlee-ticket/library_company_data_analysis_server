@@ -481,4 +481,20 @@ export class ConcertService {
             order: { liveName: 'ASC', weekStartDate: 'DESC' }
         });
     }
+
+    // 콘서트 월간 매출 데이터 (그래프용)
+    async getConMonthly() {
+        const query = `
+            SELECT 
+                live_id as "liveId",
+                live_name as "liveName",
+                record_month as "recordMonth",
+                SUM(daily_sales_amount) as "monthlySalesAmount"
+            FROM view_con_all_daily
+            GROUP BY live_id, live_name, record_month
+            ORDER BY live_id, record_month DESC
+        `;
+        
+        return this.viewConAllDailyRepository.query(query);
+    }
 }

@@ -50,4 +50,11 @@ export class ConcertController {
   async getConWeeklyMarketingCalendar() {
     return this.concertService.getConWeeklyMarketingCalendar();
   }
+
+  @Get('monthly')
+  @ApiOperation({ summary: '콘서트 월간 매출 데이터 (그래프용)' })
+  @ApiResponse({ status: 200, description: '콘서트 월간 매출 데이터 목록 (liveId별 월별 집계)' })
+  async getConMonthly() {
+    return this.concertService.getConMonthly();
+  }
 }
