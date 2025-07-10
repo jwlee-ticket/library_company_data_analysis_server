@@ -42,6 +42,7 @@ import { ViewConBep } from './report/entities/view_con_bep.entity';
 import { ViewConTargetSales } from './report/entities/view_con_target_sales.entity';
 import { ViewConWeeklyMarketingCalendar } from './report/entities/view_con_weekly_marketing_calendar.entity';
 import { ViewConEstProfit } from './report/entities/view_con_est_profit.entity';
+import { ViewConAllWeekly } from './report/entities/view_con_all_weekly.entity';
 import { LocalScheduleModule } from './local-schedule/local-schedule.module';
 
 @Module({
@@ -92,6 +93,7 @@ import { LocalScheduleModule } from './local-schedule/local-schedule.module';
           ViewConTargetSales,
           ViewConWeeklyMarketingCalendar,
           ViewConEstProfit,
+          ViewConAllWeekly,
         ],
         synchronize: true,
         logging: true,

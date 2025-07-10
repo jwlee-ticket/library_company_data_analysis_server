@@ -10,6 +10,7 @@ import { ViewConBep } from '../report/entities/view_con_bep.entity';
 import { ViewConEstProfit } from '../report/entities/view_con_est_profit.entity';
 import { ViewConTargetSales } from '../report/entities/view_con_target_sales.entity';
 import { ViewConWeeklyMarketingCalendar } from '../report/entities/view_con_weekly_marketing_calendar.entity';
+import { ViewConAllWeekly } from '../report/entities/view_con_all_weekly.entity';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ViewConWeeklyMarketingCalendar } from '../report/entities/view_con_week
       ViewConEstProfit,
       ViewConTargetSales,
       ViewConWeeklyMarketingCalendar,
+      ViewConAllWeekly,
     ]),
   ],
   controllers: [ConcertController],
