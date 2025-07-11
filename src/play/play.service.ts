@@ -5,6 +5,10 @@ import { Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
 import { PlayShowSaleModel } from './entities/play-show-sale.entity';
 import { PlayTicketSaleModel } from './entities/play-ticket-sale.entity';
+// 연극/뮤지컬 대시보드용 뷰 엔티티들 import
+import { ViewLlmPlayWeeklyA } from 'src/report/entities/view-llm-play-weekly-a.entity';
+import { ViewLlmPlayDaily } from 'src/report/entities/view-llm-play-daily.entity';
+import { ViewLlmPlayWeeklyPaidshare } from 'src/report/entities/view_llm_play_weekly_paidshare.entity';
 
 @Injectable()
 export class PlayService {
@@ -17,8 +21,114 @@ export class PlayService {
     private readonly playDailySaleRepository: Repository<PlayTicketSaleModel>,
     @InjectRepository(PlayShowSaleModel)
     private readonly playTurnSaleRepository: Repository<PlayShowSaleModel>,
+    // 연극/뮤지컬 대시보드용 뷰 레포지토리들
+    @InjectRepository(ViewLlmPlayWeeklyA)
+    private readonly viewLlmPlayWeeklyARepository: Repository<ViewLlmPlayWeeklyA>,
+    @InjectRepository(ViewLlmPlayDaily)
+    private readonly viewLlmPlayDailyRepository: Repository<ViewLlmPlayDaily>,
+    @InjectRepository(ViewLlmPlayWeeklyPaidshare)
+    private readonly viewLlmPlayWeeklyPaidshareRepository: Repository<ViewLlmPlayWeeklyPaidshare>,
   ) { }
 
+  /**
+   * 연극/뮤지컬 주간 목표 대비 실적 데이터 조회
+   * 목표점유율, 실제점유율, 목표매출, 실제매출 비교
+   * ✅ 콘서트 데이터 제외
+   */
+  async getPlayWeeklyOverview(): Promise<ViewLlmPlayWeeklyA[]> {
+    try {
+      // Raw query로 콘서트 제외 필터링 (alias 소문자로 변경)
+      const data = await this.viewLlmPlayWeeklyARepository
+        .createQueryBuilder('weeklya')
+        .innerJoin('live_model', 'live', 'weeklya."공연ID" = live."liveId"')
+        .where('live.category != :category', { category: '콘서트' })
+        .andWhere('live."isLive" = :isLive', { isLive: true })
+        .getMany();
+        
+      this.logger.debug(`연극/뮤지컬 주간 개요 데이터 ${data.length}건 조회 완료 (콘서트 제외)`);
+      return data;
+    } catch (error) {
+      this.logger.error('연극/뮤지컬 주간 개요 데이터 조회 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 연극/뮤지컬 일일 상세 데이터 조회
+   * 공연별 매출, 좌석 정보, 캐스트 정보
+   * ✅ 콘서트 데이터 제외
+   */
+  async getPlayDailyDetails(): Promise<ViewLlmPlayDaily[]> {
+    try {
+      // Raw query로 콘서트 제외 필터링
+      const data = await this.viewLlmPlayDailyRepository
+        .createQueryBuilder('daily')
+        .innerJoin('live_model', 'live', 'daily."liveId_" = live."liveId"')
+        .where('live.category != :category', { category: '콘서트' })
+        .andWhere('live."isLive" = :isLive', { isLive: true })
+        .orderBy('daily."latestRecordDate"', 'DESC')
+        .addOrderBy('daily."liveName"', 'ASC')
+        .getMany();
+        
+      this.logger.debug(`연극/뮤지컬 일일 상세 데이터 ${data.length}건 조회 완료 (콘서트 제외)`);
+      return data;
+    } catch (error) {
+      this.logger.error('연극/뮤지컬 일일 상세 데이터 조회 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 연극/뮤지컬 유료 점유율 데이터 조회
+   * 주간별 유료 객석 점유율 정보
+   * ✅ 콘서트 데이터 제외
+   */
+  async getPlayOccupancyRate(): Promise<ViewLlmPlayWeeklyPaidshare[]> {
+    try {
+      // Raw query로 콘서트 제외 필터링
+      const data = await this.viewLlmPlayWeeklyPaidshareRepository
+        .createQueryBuilder('paidshare')
+        .innerJoin('live_model', 'live', 'paidshare."공연 ID" = live."liveId"')
+        .where('live.category != :category', { category: '콘서트' })
+        .andWhere('live."isLive" = :isLive', { isLive: true })
+        .orderBy('paidshare."주 시작일"', 'DESC')
+        .addOrderBy('paidshare."공연명"', 'ASC')
+        .getMany();
+        
+      this.logger.debug(`연극/뮤지컬 유료 점유율 데이터 ${data.length}건 조회 완료 (콘서트 제외)`);
+      return data;
+    } catch (error) {
+      this.logger.error('연극/뮤지컬 유료 점유율 데이터 조회 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 연극/뮤지컬 대시보드 첫 번째 페이지 통합 데이터 조회
+   * 목표 대비 실적, 일일 상세, 유료 점유율을 통합하여 반환
+   */
+  async getPlaySummary() {
+    try {
+      const [weeklyOverview, dailyDetails, occupancyRate] = await Promise.all([
+        this.getPlayWeeklyOverview(),
+        this.getPlayDailyDetails(),
+        this.getPlayOccupancyRate()
+      ]);
+
+      const summary = {
+        weeklyOverview,    // 카테고리별 총계 (목표 대비 실적)
+        dailyDetails,      // 공연별 상세 정보
+        occupancyRate,     // 유료점유율 차트 데이터
+        timestamp: new Date()
+      };
+
+      this.logger.debug('연극/뮤지컬 통합 대시보드 데이터 조회 완료');
+      return summary;
+    } catch (error) {
+      this.logger.error('연극/뮤지컬 통합 대시보드 데이터 조회 실패:', error);
+      throw error;
+    }
+  }
 
 
   isErrorCell(cell) {
