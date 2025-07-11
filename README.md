@@ -11,47 +11,11 @@
 - 목표 매출 대비 실적 분석
 - 다양한 리포트 및 대시보드 제공
 
-## 백엔드 배포 방법
-
-백엔드 코드를 수정하고 서버에 배포하는 전체 과정을 정리하면 다음과 같습니다:
-
-### 1. 로컬 개발 및 푸시
-
-```bash
-# 로컬에서 코드 수정 후
-git add .
-git commit -m "커밋 메시지"
-git push
-```
-
-### 2. 서버 접속 및 배포
-
-```bash
-# 1. 서버 접속
-ssh -i /Users/tikes-seukweeo/.ssh/library_company forifwhile.xyz@35.208.29.100
-
-# 2. 프로젝트 디렉토리로 이동
-cd library_company_data_analysis_server
-
-# 3. 최신 코드 가져오기
-git pull
-
-# 4. 기존 서비스 중지 (중요: 빌드 전 필수 작업)
-docker-compose down
-pm2 stop all
-
-# 5. 빌드
-npm run build
-
-# 6. 서비스 시작
-docker-compose up -d
-pm2 start all
-```
-
-### 주의사항
-
-- **4번 단계가 중요합니다**: `docker-compose down`과 `pm2 stop all`을 빌드 전에 실행하지 않으면 빌드 과정에서 서버가 다운될 수 있습니다.
-- 단계를 순서대로 진행해야 안전한 배포가 가능합니다.
+### 서버 정보
+- **개발 서버**: `http://localhost:3001`
+- **프로덕션 서버**: `http://35.208.29.100:3001`
+- **Swagger 문서**: `http://35.208.29.100:3001/api`
+- **운영 현황**: 24일간 무중단 운영 (안정성 검증됨)
 
 ## 기술 스택
 
@@ -59,11 +23,12 @@ pm2 start all
 - **NestJS** - TypeScript 기반 Node.js 프레임워크
 - **TypeORM** - TypeScript ORM
 - **PostgreSQL** - 메인 데이터베이스
+- **Swagger** - API 문서화
 
 ### Infrastructure & Deployment
 - **Google Cloud Platform (GCP)** - 클라우드 호스팅
-- **Docker** - 컨테이너화
-- **PM2** - 프로세스 관리
+- **Docker** - 컨테이너화 (PostgreSQL)
+- **PM2** - 프로세스 관리 및 클러스터링
 - **Docker Compose** - 로컬 개발환경
 
 ### Additional Libraries
@@ -80,7 +45,7 @@ pm2 start all
 ### 데이터 관리
 - **공연 관리**: 콘서트, 연극/뮤지컬 정보 관리
 - **매출 데이터**: 티켓 판매량, 좌석별 판매 현황
-- **파일 업로드**: 엑셀/CSV 데이터 업로드 및 처리
+- **파일 업로드**: 엑셀/CSV 데이터 업로드 및 처리 (85개+ 파일 관리)
 - **사용자 관리**: 접근 권한 및 사용자 계정 관리
 
 ### 분석 및 리포팅
@@ -94,418 +59,335 @@ pm2 start all
 - **알림 시스템**: Slack을 통한 실시간 알림
 - **데이터 동기화**: 외부 시스템과의 데이터 연동
 
-## 시스템 포트 및 서비스
-
-- **API 서버**: `3001` 포트
-- **PostgreSQL**: `5432` 포트 (Docker 환경변수로 설정)
-- **AdminJS**: NestJS 서버 내 통합 운영
-
-## 개발 환경
-
-- **로컬 개발**: Docker Compose 기반 PostgreSQL + NestJS
-- **운영 환경**: GCP 인스턴스 + PM2 클러스터 모드
-- **시간대**: Asia/Seoul (KST)
-
 ## 시스템 아키텍처
 
-### 1. 프로젝트 전체 구조도
-
-```mermaid
-graph TD
-    %% 클라이언트 및 사용자
-    A[클라이언트<br/>Frontend] --> B[NestJS API 서버<br/>Port 3001]
-    A1[관리자] --> A2[AdminJS<br/>관리 패널]
-    A2 --> B
-    
-    %% API 서버 모듈들
-    B --> C[데이터 관리 모듈]
-    B --> D[분석 및 리포트 모듈]
-    B --> E[연동 모듈]
-    
-    %% 데이터 관리 모듈
-    C --> C1[UploadModule<br/>파일 업로드]
-    C --> C2[LiveModule<br/>공연 관리]
-    C --> C3[PlayModule<br/>연극 데이터]
-    C --> C4[ConcertModule<br/>콘서트 데이터]
-    C --> C5[UsersModule<br/>사용자 관리]
-    
-    %% 분석 및 리포트 모듈
-    D --> D1[ReportModule<br/>리포트 생성]
-    D --> D2[ViewModule<br/>데이터 뷰]
-    D --> D3[TargetModule<br/>목표 관리]
-    D --> D4[MarketingModule<br/>마케팅 캘린더]
-    
-    %% 연동 모듈
-    E --> E1[SlackModule<br/>알림 연동]
-    E --> E2[LocalScheduleModule<br/>스케줄링]
-    E --> E3[CalendarModule<br/>캘린더]
-    
-    %% 데이터베이스
-    C1 --> F[PostgreSQL<br/>Port 1377]
-    C2 --> F
-    C3 --> F
-    C4 --> F
-    C5 --> F
-    D1 --> F
-    D2 --> F
-    D3 --> F
-    D4 --> F
-    
-    %% 외부 서비스
-    E1 --> G[Slack<br/>Webhook]
-    B --> H[OpenAI API<br/>AI 기능]
-    
-    %% 파일 시스템
-    C1 --> I[uploads/<br/>엑셀 파일 저장<br/>85개+ 파일]
-    
-    %% 데이터 플로우
-    J[엑셀/CSV 업로드] --> C1
-    C1 --> K[파일 파싱]
-    K --> F
-    F --> L[데이터베이스 뷰]
-    L --> D1
-    D1 --> M[리포트 API]
-    
-    %% 스타일링
-    classDef client fill:#e1f5fe
-    classDef api fill:#f3e5f5
-    classDef module fill:#e8f5e8
-    classDef database fill:#fff3e0
-    classDef external fill:#fce4ec
-    classDef files fill:#f1f8e9
-    
-    class A,A1,A2 client
-    class B api
-    class C,D,E,C1,C2,C3,C4,C5,D1,D2,D3,D4,E1,E2,E3 module
-    class F database
-    class G,H external
-    class I,J,K,L,M files
-```
-
-### 2. 인프라 시스템 구조도
+### 전체 시스템 구조도
 
 ```mermaid
 graph TB
-    subgraph "Internet"
-        U["사용자<br/>API 클라이언트"]
-        DEV["개발자<br/>SSH 접속"]
+    subgraph "Frontend Layer"
+        A1["Vercel Frontend<br/>https://librarycompany-data-analysis.vercel.app"]
+        A2["관리자 웹 콘솔<br/>AdminJS"]
+        A3["API 문서<br/>Swagger UI<br/>/api"]
     end
     
-    subgraph "GCP Project"
-        subgraph "Network Security"
-            FW1["방화벽 규칙<br/>allow-ssh<br/>TCP: 22<br/>Source: 0.0.0.0/0"]
-            FW2["방화벽 규칙<br/>allow-api<br/>TCP: 3001<br/>Source: 0.0.0.0/0"]
-            FW3["내부 전용<br/>PostgreSQL<br/>TCP: 1377<br/>Local only"]
+    subgraph "API Gateway Layer"
+        B["NestJS Application<br/>Port: 3001<br/>CORS 설정<br/>Swagger 통합"]
+    end
+    
+    subgraph "Application Layer"
+        subgraph "Core Modules"
+            C1["AppModule<br/>메인 모듈<br/>전역 설정"]
+            C2["UploadModule<br/>파일 업로드<br/>엑셀 파싱"]
+            C3["UsersModule<br/>사용자 관리<br/>권한 제어"]
+            C4["LiveModule<br/>공연 관리<br/>공연 정보"]
         end
         
-        subgraph "us-central1-a Zone"
-            VM["VM Instance<br/>instance-20250211-224503<br/>e2-micro (1GB RAM, 1 vCPU)<br/>External: 35.208.29.100<br/>Internal: 10.128.0.2<br/>Ubuntu 22.04.5 LTS"]
-            
-            subgraph "Runtime Environment"
-                NODE["Node.js v20.18.3<br/>npm v10.8.2<br/>PM2 v5.4.3"]
-                DOCKER["Docker v27.5.1<br/>Docker Compose v2.32.4"]
-            end
-            
-            subgraph "Process Management"
-                PM2["PM2 Process Manager<br/>클러스터 모드<br/>24일 무중단 운영<br/>자동 재시작 활성화"]
-                
-                subgraph "Application"
-                    API["NestJS API 서버<br/>Port: 3001<br/>Process ID: 63357<br/>Memory: 111.4MB<br/>Heap Usage: 85.84%"]
-                    ADMIN["AdminJS<br/>관리자 패널<br/>통합 운영"]
-                end
-                
-                LOG_ROTATE["pm2-logrotate<br/>로그 자동 관리<br/>Max: 10MB<br/>Retain: 7일"]
-            end
-            
-            subgraph "Container Services"
-                POSTGRES_CONTAINER["Docker Container<br/>libraryPostgres<br/>postgres:15<br/>Port: 1377:5432<br/>3주간 안정 운영"]
-                
-                subgraph "Database"
-                    PG_DB["PostgreSQL 15<br/>Database: libraryPostgres<br/>User: libraryPostgres<br/>Timezone: Asia/Seoul"]
-                    PG_VIEWS["Database Views<br/>연극/콘서트 분석 뷰<br/>30+ 분석 뷰 운영"]
-                end
-            end
-            
-            subgraph "File System"
-                UPLOADS["uploads/<br/>85개+ 엑셀 파일<br/>약 80MB<br/>최신: 158.xlsx"]
-                PG_DATA["postgres-data/<br/>영속 볼륨<br/>데이터베이스 저장소"]
-                BACKUP["backup_20250615_024839.sql<br/>정기 백업 파일<br/>자동 백업 스크립트"]
-                LOGS["~/.pm2/logs/<br/>app-out-1.log<br/>app-error-1.log<br/>자동 로테이션"]
-            end
+        subgraph "Business Modules"
+            D1["ConcertModule<br/>콘서트 분석<br/>매출/BEP 분석"]
+            D2["PlayModule<br/>연극/뮤지컬<br/>공연 데이터"]
+            D3["ReportModule<br/>리포트 생성<br/>AI 분석 연동"]
+            D4["TargetModule<br/>목표 관리<br/>실적 비교"]
         end
         
-        subgraph "Resource Monitoring"
-            DISK["디스크 사용량<br/>29GB 총 용량<br/>16GB 사용 (53%)<br/>14GB 여유공간"]
-            MEMORY["메모리 사용량<br/>958MB 총 메모리<br/>494MB 사용<br/>296MB 사용가능"]
-            CPU["CPU 사용률<br/>1 vCPU<br/>평균 0% (유휴)"]
+        subgraph "Support Modules"
+            E1["SlackModule<br/>알림 서비스<br/>Webhook 연동"]
+            E2["CalendarModule<br/>일정 관리<br/>마케팅 캘린더"]
+            E3["MarketingModule<br/>마케팅 분석<br/>프로모션 관리"]
+            E4["ViewModule<br/>데이터 뷰<br/>조회 최적화"]
+            E5["LocalScheduleModule<br/>스케줄러<br/>정기 작업"]
+        end
+    end
+    
+    subgraph "Data Layer"
+        F["PostgreSQL Database<br/>Port: 1377<br/>Container: libraryPostgres"]
+        
+        subgraph "Database Views (30+)"
+            G1["Concert Views<br/>view_con_*<br/>콘서트 분석 뷰"]
+            G2["Play Views<br/>view_llm_play_*<br/>연극 분석 뷰"]
+            G3["Marketing Views<br/>마케팅 분석 뷰"]
+        end
+        
+        subgraph "Core Tables"
+            H1["LiveModel<br/>공연 정보"]
+            H2["FileUploadModel<br/>파일 업로드"]
+            H3["UserModel<br/>사용자 정보"]
+            H4["Sales Tables<br/>매출 데이터"]
         end
     end
     
     subgraph "External Services"
-        SLACK["Slack<br/>Webhook API<br/>알림 서비스<br/>실시간 알림"]
-        OPENAI["OpenAI API<br/>GPT Integration<br/>AI 기능 제공"]
+        I1["OpenAI API<br/>GPT Integration<br/>AI 분석"]
+        I2["Slack API<br/>Webhook 알림<br/>실시간 notification"]
     end
     
-    subgraph "Development Workflow"
-        GIT["Git Repository<br/>develop branch<br/>코드 버전 관리"]
-        SSH_KEY["SSH Key<br/>/Users/tikes-seukweeo/.ssh/library_company<br/>키 기반 인증"]
+    subgraph "Infrastructure"
+        J1["PM2 Process Manager<br/>클러스터 모드<br/>무중단 운영"]
+        J2["Docker Container<br/>PostgreSQL 컨테이너<br/>영속 볼륨"]
+        J3["File System<br/>uploads/ 디렉토리<br/>85+ 엑셀 파일"]
     end
     
-    %% Network Connections
-    U --> FW2
-    FW2 --> VM
-    VM --> API
+    %% Frontend to API
+    A1 --> B
+    A2 --> B
+    A3 --> B
     
-    DEV --> SSH_KEY
-    SSH_KEY --> FW1
-    FW1 --> VM
+    %% API to Core Modules
+    B --> C1
+    C1 --> C2
+    C1 --> C3
+    C1 --> C4
     
-    %% Internal Services
-    VM --> NODE
-    VM --> DOCKER
-    NODE --> PM2
-    PM2 --> API
-    PM2 --> LOG_ROTATE
-    DOCKER --> POSTGRES_CONTAINER
-    POSTGRES_CONTAINER --> PG_DB
-    PG_DB --> PG_VIEWS
+    %% Core to Business Modules
+    C1 --> D1
+    C1 --> D2
+    C1 --> D3
+    C1 --> D4
     
-    %% File System Access
-    API --> UPLOADS
-    POSTGRES_CONTAINER --> PG_DATA
-    PG_DB --> BACKUP
-    PM2 --> LOGS
+    %% Core to Support Modules
+    C1 --> E1
+    C1 --> E2
+    C1 --> E3
+    C1 --> E4
+    C1 --> E5
+    
+    %% Database Connections
+    C2 --> F
+    C3 --> F
+    C4 --> F
+    D1 --> F
+    D2 --> F
+    D3 --> F
+    D4 --> F
+    E2 --> F
+    E3 --> F
+    
+    %% Database Internal Structure
+    F --> G1
+    F --> G2
+    F --> G3
+    F --> H1
+    F --> H2
+    F --> H3
+    F --> H4
     
     %% External Service Connections
-    API --> SLACK
-    API --> OPENAI
+    D3 --> I1
+    E1 --> I2
     
-    %% Development Workflow
-    DEV --> GIT
-    GIT -.-> VM
-    
-    %% Internal Database Connection
-    API --> FW3
-    FW3 --> POSTGRES_CONTAINER
-    
-    %% Monitoring
-    VM --> DISK
-    VM --> MEMORY
-    VM --> CPU
+    %% Infrastructure
+    B --> J1
+    F --> J2
+    C2 --> J3
     
     %% Styling
-    classDef gcp fill:#4285f4,stroke:#333,stroke-width:2px,color:#fff
-    classDef vm fill:#34a853,stroke:#333,stroke-width:2px,color:#fff
-    classDef app fill:#ea4335,stroke:#333,stroke-width:2px,color:#fff
-    classDef database fill:#0f9d58,stroke:#333,stroke-width:2px,color:#fff
-    classDef security fill:#ff6b35,stroke:#333,stroke-width:2px,color:#fff
-    classDef external fill:#fbbc04,stroke:#333,stroke-width:2px,color:#000
-    classDef monitoring fill:#9c27b0,stroke:#333,stroke-width:2px,color:#fff
+    classDef frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef api fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef core fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef business fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef support fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef database fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    classDef external fill:#fff8e1,stroke:#ffa000,stroke-width:2px
+    classDef infra fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
     
-    class VM gcp
-    class NODE,DOCKER,PM2,API,ADMIN vm
-    class POSTGRES_CONTAINER,PG_DB,PG_VIEWS,BACKUP app
-    class UPLOADS,PG_DATA,LOGS database
-    class FW1,FW2,FW3,SSH_KEY security
-    class U,DEV,SLACK,OPENAI,GIT external
-    class DISK,MEMORY,CPU,LOG_ROTATE monitoring
+    class A1,A2,A3 frontend
+    class B api
+    class C1,C2,C3,C4 core
+    class D1,D2,D3,D4 business
+    class E1,E2,E3,E4,E5 support
+    class F,G1,G2,G3,H1,H2,H3,H4 database
+    class I1,I2 external
+    class J1,J2,J3 infra
 ```
 
-### 3. 데이터베이스 ERD
+### 인프라 구조도
 
 ```mermaid
-erDiagram
-    %% 핵심 엔터티
-    LiveModel {
-        int id PK
-        string liveId UK "고유 공연 ID"
-        string category "콘서트/뮤지컬"
-        boolean isLive "활성 상태"
-        string liveName "공연명"
-        string location "장소"
-        date showStartDate "공연 시작일"
-        date showEndDate "공연 종료일"
-        date saleStartDate "판매 시작일"
-        date saleEndDate "판매 종료일"
-        int runningTime "러닝타임"
-        decimal targetShare "목표 점유율"
-        bigint bep "손익분기점"
-        int showTotalSeatNumber "총 좌석수"
-        date latestRecordDate "최신 기록일"
-        date createdAt
-    }
+graph TB
+    subgraph "Internet"
+        U["사용자<br/>브라우저/API 클라이언트"]
+        DEV["개발자<br/>SSH 접속"]
+        VERCEL["Vercel Frontend<br/>https://librarycompany-data-analysis.vercel.app"]
+    end
     
-    FileUploadModel {
-        int id PK
-        string fileName "파일명"
-        date recordDate "기록일"
-        string liveId FK "공연 ID"
-        string uploadBy "업로드자"
-        boolean isSavedFile "저장 여부"
-        date uploadDate "업로드일"
-        date deleteDate "삭제일"
-    }
+    subgraph "GCP Project (us-central1-a)"
+        subgraph "Network Security"
+            FW1["방화벽 규칙<br/>SSH (22)"]
+            FW2["방화벽 규칙<br/>API (3001)"]
+            FW3["내부 접근<br/>PostgreSQL (1377)"]
+        end
+        
+        subgraph "VM Instance (e2-micro)"
+            VM["instance-20250211-224503<br/>External: 35.208.29.100<br/>Internal: 10.128.0.2<br/>Ubuntu 22.04.5 LTS<br/>1GB RAM, 1 vCPU"]
+            
+            subgraph "Runtime Environment"
+                NODE["Node.js v20.18.3<br/>npm v10.8.2"]
+                DOCKER["Docker v27.5.1<br/>Docker Compose v2.32.4"]
+                PM2_ENV["PM2 v5.4.3<br/>프로세스 관리자"]
+            end
+            
+            subgraph "Application Stack"
+                PM2["PM2 클러스터<br/>24일 연속 운영<br/>자동 재시작"]
+                NESTJS["NestJS API<br/>Port: 3001<br/>Memory: 111.4MB<br/>Heap: 85.84%"]
+                SWAGGER["Swagger UI<br/>/api<br/>API 문서화"]
+            end
+            
+            subgraph "Database Container"
+                POSTGRES_DOCKER["Docker Container<br/>libraryPostgres<br/>postgres:15"]
+                POSTGRES_DB["PostgreSQL DB<br/>User: libraryPostgres<br/>DB: libraryPostgres<br/>Port: 1377:5432"]
+            end
+            
+            subgraph "File System"
+                UPLOADS["uploads/<br/>85+ Excel files<br/>~80MB storage"]
+                POSTGRES_DATA["postgres-data/<br/>영속 볼륨<br/>DB 데이터"]
+                LOGS["PM2 Logs<br/>자동 로테이션<br/>10MB max"]
+            end
+        end
+    end
     
-    %% 사용자 관리
-    UserModel {
-        int id PK
-        string email UK "이메일"
-        string password "비밀번호"
-        string name UK "사용자명"
-        int role "권한(0:마스터,1:관리자,2:일반)"
-        boolean isFileUploader "파일업로드 권한"
-        boolean isLiveManager "공연관리 권한"
-        text[] liveNameList "접근가능 공연목록"
-        boolean status "활성상태"
-        date createdAt
-        date updatedAt
-    }
+    subgraph "External APIs"
+        SLACK_API["Slack API<br/>Webhook 알림<br/>실시간 notification"]
+        OPENAI_API["OpenAI API<br/>GPT Integration<br/>AI 분석 기능"]
+    end
     
-    %% 연극 매출 데이터
-    PlayTicketSaleModel {
-        int id PK
-        int playUploadId FK "업로드 파일 ID"
-        string liveId "공연 ID"
-        date recordDate "기록일"
-        date salesDate "판매일"
-        bigint sales "매출액"
-        int paidSeatTot "유료 총 좌석"
-        int inviteSeatTot "초대 총 좌석"
-    }
+    %% Network Flow
+    U -->|HTTPS/HTTP| VERCEL
+    VERCEL -->|API Calls| FW2
+    U -->|Direct API| FW2
+    FW2 --> VM
     
-    PlayShowSaleModel {
-        int id PK
-        int playUploadId FK "업로드 파일 ID"
-        string liveId "공연 ID"
-        date recordDate "기록일"
-        datetime showDateTime "공연일시"
-        text[] cast "출연진"
-        int paidSeatSales "유료매출"
-        int paidSeatTot "유료 총 좌석"
-        int paidSeatVip "유료 VIP"
-        int paidSeatA "유료 A석"
-        int paidSeatS "유료 S석"
-        int paidSeatR "유료 R석"
-        int inviteSeatTot "초대 총 좌석"
-        decimal depositShare "예약금 점유율"
-        decimal paidShare "완납 점유율"
-        decimal freeShare "무료 점유율"
-    }
+    DEV -->|SSH| FW1
+    FW1 --> VM
     
-    %% 콘서트 매출 데이터
-    ConcertTicketSaleModel {
-        int id PK
-        int concertUploadId FK "업로드 파일 ID"
-        string liveId "공연 ID"
-        date recordDate "기록일"
-        date salesDate "판매일"
-        bigint sales "매출액"
-        int paidSeatTot "유료 총 좌석"
-    }
+    %% Internal Architecture
+    VM --> NODE
+    VM --> DOCKER
+    VM --> PM2_ENV
     
-    ConcertSeatSaleModel {
-        int id PK
-        int concertUploadId FK "업로드 파일 ID"
-        string liveId "공연 ID"
-        date recordDate "기록일"
-        datetime showDateTime "공연일시"
-        int paidSeatR "유료 R석"
-        int paidSeatS "유료 S석"
-        int paidSeatA "유료 A석"
-        int paidSeatB "유료 B석"
-        int paidSeatVip "유료 VIP"
-        int paidSeatTot "유료 총 좌석"
-        int inviteSeatTot "초대 총 좌석"
-    }
+    NODE --> PM2
+    PM2 --> NESTJS
+    NESTJS --> SWAGGER
     
-    %% 목표 및 계획
-    DailyTargetModel {
-        int id PK
-        string liveId FK "공연 ID"
-        date date "날짜"
-        int target "목표값"
-        date createdAt
-    }
+    DOCKER --> POSTGRES_DOCKER
+    POSTGRES_DOCKER --> POSTGRES_DB
     
-    WeeklyMarketingCalendarModel {
-        int id PK
-        string liveId FK "공연 ID"
-        int weekNumber "주차"
-        date weekStartDate "주 시작일"
-        date weekEndDate "주 종료일"
-        text salesMarketing "영업마케팅"
-        text promotion "프로모션"
-        text etc "기타사항"
-        date createdAt
-    }
+    %% Database Access
+    NESTJS -->|Local Connection| FW3
+    FW3 --> POSTGRES_DOCKER
     
-    CalendarModel {
-        int id PK
-        date date "날짜"
-        string noteSales "영업 메모"
-        string noteMarketing "마케팅 메모"
-        string noteOthers "기타 메모"
-        date createdAt
-    }
+    %% File System Access
+    NESTJS --> UPLOADS
+    POSTGRES_DOCKER --> POSTGRES_DATA
+    PM2 --> LOGS
     
-    MonthlyEtcModel {
-        int id PK
-        int year "연도"
-        int month "월"
-        text etc "기타사항"
-        date updatedAt
-    }
+    %% External Service Integration
+    NESTJS --> SLACK_API
+    NESTJS --> OPENAI_API
     
-    %% 리포트 뷰 (예시)
-    ViewLlmPlayDaily {
-        string liveId "공연 ID"
-        string liveName "공연명"
-        date recordDate "기록일"
-        int dailySales "일별매출"
-        int paidSeatTot "유료좌석"
-        decimal paidShare "완납점유율"
-    }
+    %% Styling
+    classDef internet fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef gcp fill:#4285f4,stroke:#fff,stroke-width:2px,color:#fff
+    classDef security fill:#ff6b35,stroke:#fff,stroke-width:2px,color:#fff
+    classDef vm fill:#34a853,stroke:#fff,stroke-width:2px,color:#fff
+    classDef app fill:#ea4335,stroke:#fff,stroke-width:2px,color:#fff
+    classDef database fill:#0f9d58,stroke:#fff,stroke-width:2px,color:#fff
+    classDef external fill:#fbbc04,stroke:#333,stroke-width:2px
     
-    ViewConAllDaily {
-        string live_id "공연 ID"
-        string live_name "공연명"
-        date record_date "기록일"
-        int daily_sales_ticket_no "일별판매티켓수"
-        bigint daily_sales_amount "일별매출액"
-    }
-    
-    %% 관계 정의
-    LiveModel ||--o{ FileUploadModel : "업로드 파일"
-    LiveModel ||--o{ DailyTargetModel : "일별 목표"
-    LiveModel ||--o{ WeeklyMarketingCalendarModel : "마케팅 계획"
-    
-    FileUploadModel ||--o{ PlayTicketSaleModel : "연극 일별 매출"
-    FileUploadModel ||--o{ PlayShowSaleModel : "연극 회차별 매출"
-    FileUploadModel ||--o{ ConcertTicketSaleModel : "콘서트 일별 매출"
-    FileUploadModel ||--o{ ConcertSeatSaleModel : "콘서트 좌석별 매출"
-    
-    %% 뷰는 실제 테이블에서 데이터를 가져옴 (참조 관계)
-    LiveModel ||--o{ ViewLlmPlayDaily : "연극 일별 분석"
-    LiveModel ||--o{ ViewConAllDaily : "콘서트 일별 분석"
+    class U,DEV,VERCEL internet
+    class FW1,FW2,FW3 security
+    class VM,NODE,DOCKER,PM2_ENV vm
+    class PM2,NESTJS,SWAGGER app
+    class POSTGRES_DOCKER,POSTGRES_DB database
+    class UPLOADS,POSTGRES_DATA,LOGS database
+    class SLACK_API,OPENAI_API external
 ```
 
 ### 아키텍처 특징
 
-#### 데이터 플로우
-1. **파일 업로드**: 엑셀/CSV → FileUploadModel 메타데이터 저장
-2. **데이터 파싱**: 매출 데이터 파싱 → 각 엔터티별 저장
-3. **뷰 생성**: 복잡한 집계 쿼리를 뷰로 최적화
-4. **API 제공**: ReportModule을 통한 분석 데이터 제공
+#### 모듈화된 아키텍처
+- **도메인 분리**: Concert, Play, Upload 등 각 도메인별 독립 모듈
+- **의존성 관리**: 순환 참조 방지 및 명확한 모듈 경계
+- **확장성**: 새로운 분석 모듈 추가 용이
 
-#### 보안 및 권한
-- **역할 기반 접근 제어**: 마스터(0), 관리자(1), 일반사용자(2)
-- **공연별 권한**: 사용자별 접근 가능한 공연 리스트 관리
-- **기능별 권한**: 파일 업로드, 공연 관리 권한 분리
+#### 데이터 처리 파이프라인
+- **데이터 수집**: Excel 업로드 → 파싱 → 정규화 → 저장
+- **실시간 분석**: 데이터베이스 뷰를 통한 즉시 분석
+- **AI 연동**: OpenAI API를 통한 지능형 분석
 
-#### 확장성 고려사항
-- **모듈 분리**: 각 기능별 독립적인 모듈 구조
-- **데이터베이스 뷰**: 복잡한 분석 쿼리의 성능 최적화
-- **외부 연동**: Slack, OpenAI 등 확장 가능한 API 연동
+#### 성능 최적화
+- **뷰 기반 분석**: 30+ 데이터베이스 뷰로 복잡한 쿼리 최적화
+- **캐싱 전략**: TypeORM 엔티티 캐싱 및 뷰 기반 데이터 제공
+- **무중단 운영**: PM2 클러스터 모드로 24시간 안정 서비스
+
+## API 엔드포인트
+
+### 🎭 콘서트 관련 API
+
+#### 일반 데이터 조회
+- `GET /concert/daily` - 콘서트 일일 매출 데이터
+- `GET /concert/monthly` - 콘서트 월간 매출 데이터 (차트용)
+- `GET /concert/weekly` - 콘서트 주간 매출 데이터 (마케팅 정보 포함)
+
+#### 분석 데이터 조회
+- `GET /concert/overview` - 콘서트 전체 개요 (어제/누적/주간 매출)
+- `GET /concert/bep` - 콘서트 BEP (손익분기점) 분석
+- `GET /concert/estimated-profit` - 콘서트 예상 수익
+- `GET /concert/target-sales` - 콘서트 목표 매출 대비 실적
+- `GET /concert/marketing-calendar` - 콘서트 주간 마케팅 캘린더
+
+### 🎪 연극/뮤지컬 관련 API
+
+#### 데이터 조회
+- `GET /report/llm-play-daily` - 연극 일일 매출 데이터
+- `GET /report/llm-play-weekly-a` - 연극 주간 매출 데이터 (A 타입)
+- `GET /report/llm-play-weekly-b` - 연극 주간 매출 데이터 (B 타입)
+- `GET /report/llm-play-weekly-c` - 연극 주간 매출 데이터 (C 타입)
+- `GET /report/llm-play-weekly-d` - 연극 주간 매출 데이터 (D 타입)
+- `GET /report/llm-play-est-profit` - 연극 예상 수익
+- `GET /report/llm-play-weekly-paidshare` - 연극 주간 유료 점유율
+
+### 👥 사용자 관리 API
+
+- `GET /users/get-users` - 사용자 목록 조회
+- `POST /users` - 사용자 생성
+- `PATCH /users/:id` - 사용자 정보 수정
+- `DELETE /users/:id` - 사용자 삭제
+
+### 🎪 공연 관리 API
+
+- `GET /live` - 공연 목록 조회
+- `POST /live` - 공연 생성
+- `PATCH /live/:id` - 공연 정보 수정
+- `DELETE /live/:id` - 공연 삭제
+
+### 📁 파일 업로드 API
+
+- `POST /upload` - 파일 업로드
+- `GET /upload` - 업로드 파일 목록 조회
+- `DELETE /upload/:id` - 업로드 파일 삭제
+
+### 🎯 목표 관리 API
+
+- `GET /target` - 목표 설정 조회
+- `POST /target` - 목표 설정
+- `PATCH /target/:id` - 목표 수정
+
+### 📅 캘린더 API
+
+- `GET /calendar` - 캘린더 일정 조회
+- `POST /calendar` - 일정 생성
+- `PATCH /calendar/:id` - 일정 수정
+
+### 📊 마케팅 API
+
+- `GET /marketing` - 마케팅 캘린더 조회
+- `POST /marketing` - 마케팅 일정 생성
+- `PATCH /marketing/:id` - 마케팅 일정 수정
+
+### 🔔 알림 API
+
+- `POST /slack` - Slack 알림 전송
+- `GET /slack` - 알림 내역 조회
 
 ## 개발 환경 설정
 
@@ -605,27 +487,6 @@ docker exec -i libraryPostgres psql -U libraryPostgres -d libraryPostgres < view
 
 ### 로컬 개발 서버 설정
 
-#### TypeORM 설정 확인
-
-운영 서버 기준 설정으로 `src/app.module.ts` 확인:
-
-```typescript
-TypeOrmModule.forRootAsync({
-  useFactory: (configService: ConfigService) => ({
-    type: 'postgres',
-    host: configService.get('POSTGRES_HOST'),           // 127.0.0.1
-    port: parseInt(configService.get('POSTGRES_PORT')), // 1377
-    username: configService.get('POSTGRES_USER'),       // libraryPostgres
-    password: configService.get('POSTGRES_PASSWORD'),
-    database: configService.get('POSTGRES_DB'),         // libraryPostgres
-    entities: [...],
-    synchronize: process.env.NODE_ENV === 'development', // 환경별 설정
-    logging: process.env.NODE_ENV === 'development',
-    timezone: 'Asia/Seoul',
-  }),
-})
-```
-
 #### uploads 디렉토리 생성
 ```bash
 # 파일 업로드를 위한 디렉토리 생성 (운영서버에 존재)
@@ -633,68 +494,7 @@ mkdir -p uploads
 chmod 755 uploads
 ```
 
-### 개발/운영 환경 분리
-
-#### 개발 환경 (로컬)
-```bash
-# 로컬 개발 환경
-NODE_ENV=development
-MODE=DEV
-POSTGRES_HOST=localhost
-POSTGRES_PORT=1377
-TYPEORM_SYNCHRONIZE=true
-TYPEORM_LOGGING=true
-```
-
-#### 운영 환경 (GCP 실제 설정)
-```bash
-# 실제 운영 서버 설정
-NODE_ENV=development      # ⚠️ 현재 운영서버 설정 (변경 권장)
-MODE=PROD
-POSTGRES_HOST=127.0.0.1
-POSTGRES_PORT=1377
-TYPEORM_SYNCHRONIZE=true  # ⚠️ 운영에서 false 권장
-TYPEORM_LOGGING=true
-```
-
-### 실제 운영 서버 스펙 (참고용)
-
-#### GCP 인스턴스 정보
-- **인스턴스**: instance-20250211-224503
-- **머신 타입**: e2-micro (1GB RAM, 1 vCPU)
-- **운영체제**: Ubuntu 22.04.5 LTS
-- **리전**: us-central1-a
-- **디스크**: 29GB (16GB 사용 중, 53% 사용률)
-
-#### 실행 중인 서비스
-- **NestJS API**: 3001 포트, PM2로 관리
-- **PostgreSQL**: 1377 포트, Docker 컨테이너
-- **업타임**: 24일간 무중단 운영 (안정성 검증됨)
-
-### 보안 고려사항
-
-#### 로컬 개발환경
-- `.env` 파일을 `.gitignore`에 추가
-- 개발용 약한 패스워드 사용 가능
-- 포트 1377이 다른 서비스와 충돌하지 않는지 확인
-
-#### 운영 환경 보안 설정
-- 강력한 데이터베이스 패스워드 설정
-- NODE_ENV를 production으로 변경 권장
-- synchronize를 false로 설정 권장
-- API 키 및 Webhook URL 보안 관리
-
-### 포트 설정 주의사항
-
-⚠️ **중요**: 이 프로젝트는 **비표준 포트**를 사용합니다:
-- **PostgreSQL**: 5432 → **1377** 사용
-- **API 서버**: **3001** 사용
-
-로컬 개발시 이 포트들이 충돌하지 않도록 주의하세요!
-
-## 설치 및 실행
-
-### 프로젝트 클론 및 의존성 설치
+### 설치 및 실행
 
 #### 1. 프로젝트 클론
 ```bash
@@ -720,9 +520,7 @@ cp .env.example .env
 nano .env
 ```
 
-### 로컬 개발 환경 실행
-
-#### 1. 데이터베이스 실행
+#### 4. 데이터베이스 실행
 ```bash
 # Docker Compose로 PostgreSQL 실행
 docker-compose up -d
@@ -731,13 +529,7 @@ docker-compose up -d
 docker-compose logs postgres
 ```
 
-#### 2. 데이터베이스 뷰 생성 (선택사항)
-```bash
-# 컨테이너에서 뷰 생성 스크립트 실행
-docker exec -i library_company_postgres psql -U postgres -d library_company_db < view-definitions.sql
-```
-
-#### 3. NestJS 서버 실행
+#### 5. NestJS 서버 실행
 ```bash
 # 개발 모드로 서버 실행 (파일 변경 감지)
 npm run start:dev
@@ -749,7 +541,7 @@ npm run start
 npm run start:debug
 ```
 
-#### 4. 서버 접속 확인
+#### 6. 서버 접속 확인
 ```bash
 # API 서버 접속 확인
 curl http://localhost:3001
@@ -758,151 +550,15 @@ curl http://localhost:3001
 open http://localhost:3001
 ```
 
-### 데이터베이스 설정
+### 포트 설정 주의사항
 
-#### PostgreSQL 직접 접속
-```bash
-# Docker 컨테이너를 통한 접속
-docker exec -it library_company_postgres psql -U postgres -d library_company_db
+⚠️ **중요**: 이 프로젝트는 **비표준 포트**를 사용합니다:
+- **PostgreSQL**: 5432 → **1377** 사용
+- **API 서버**: **3001** 사용
 
-# 로컬 PostgreSQL 직접 접속
-psql -h localhost -p 5432 -U postgres -d library_company_db
-```
+로컬 개발시 이 포트들이 충돌하지 않도록 주의하세요!
 
-#### 기본 테이블 확인
-```sql
--- 테이블 목록 확인
-\dt
-
--- 특정 테이블 구조 확인
-\d live_model
-
--- 뷰 목록 확인
-\dv
-```
-
-#### 초기 데이터 설정 (선택사항)
-```sql
--- 관리자 사용자 생성 예시
-INSERT INTO user_model (email, password, name, role, status) 
-VALUES ('admin@example.com', 'hashed_password', 'Administrator', 0, true);
-
--- 테스트 공연 데이터 생성 예시  
-INSERT INTO live_model (liveId, liveName, category, isLive, location)
-VALUES ('TEST001', '테스트 뮤지컬', '뮤지컬', true, '테스트 극장');
-```
-
-### 개발 도구 설정
-
-#### AdminJS 관리자 패널 접속
-```bash
-# 서버 실행 후 브라우저에서 접속
-# URL: http://localhost:3001/admin
-# (구체적인 경로는 코드 확인 필요)
-```
-
-#### API 테스트
-```bash
-# Postman 또는 curl을 사용한 API 테스트
-
-# 공연 목록 조회
-curl -X GET http://localhost:3001/live
-
-# 사용자 목록 조회
-curl -X GET http://localhost:3001/users
-
-# 파일 업로드 테스트
-curl -X POST http://localhost:3001/upload \
-  -F "file=@test-data.xlsx" \
-  -F "liveId=TEST001"
-```
-
-### 빌드 및 프로덕션 준비
-
-#### 1. 프로덕션 빌드
-```bash
-# TypeScript 컴파일 및 빌드
-npm run build
-
-# 빌드 결과 확인
-ls -la dist/
-```
-
-#### 2. 프로덕션 실행 테스트
-```bash
-# 빌드된 파일로 실행
-npm run start:prod
-
-# PM2로 실행 (프로덕션 권장)
-pm2 start ecosystem.config.js
-```
-
-### 트러블슈팅
-
-#### 자주 발생하는 문제 및 해결법
-
-**1. 데이터베이스 연결 실패**
-```bash
-# PostgreSQL 컨테이너 재시작
-docker-compose down && docker-compose up -d
-
-# 환경변수 확인
-cat .env | grep POSTGRES
-
-# 포트 충돌 확인
-lsof -i :5432
-```
-
-**2. 포트 충돌 (3001 포트 사용 중)**
-```bash
-# 포트 사용 프로세스 확인
-lsof -i :3001
-
-# 프로세스 종료
-kill -9 <PID>
-
-# 다른 포트 사용 (main.ts 수정)
-```
-
-**3. 뷰 생성 실패**
-```bash
-# 수동으로 뷰 생성
-docker exec -it library_company_postgres psql -U postgres -d library_company_db
-
-# SQL 파일 직접 실행
-\i /path/to/view-definitions.sql
-```
-
-**4. TypeORM 동기화 문제**
-```bash
-# 캐시 정리
-rm -rf dist/
-npm run build
-
-# synchronize 옵션 확인 (app.module.ts)
-# 개발환경: true, 운영환경: false
-```
-
-### 유용한 개발 명령어
-
-```bash
-# 코드 포매팅
-npm run format
-
-# 린트 검사
-npm run lint
-
-# 테스트 실행
-npm run test
-
-# E2E 테스트
-npm run test:e2e
-
-# 테스트 커버리지
-npm run test:cov
-```
-
-## 배포 정보
+## 배포 가이드
 
 ### 실제 GCP 운영 환경
 
@@ -926,13 +582,45 @@ npm run test:cov
 - 업로드 파일: 85개+ 엑셀 파일 관리 중
 ```
 
-#### 3. 네트워크 설정
+### 배포 절차
+
+#### 1. 로컬 개발 및 푸시
+
 ```bash
-# 열린 포트 (실제 확인됨)
-- 3001: NestJS API 서버
-- 1377: PostgreSQL (외부 접근 차단)
-- 22: SSH 접속
+# 로컬에서 코드 수정 후
+git add .
+git commit -m "커밋 메시지"
+git push
 ```
+
+#### 2. 서버 접속 및 배포
+
+```bash
+# 1. 서버 접속
+ssh -i /Users/tikes-seukweeo/.ssh/library_company forifwhile.xyz@35.208.29.100
+
+# 2. 프로젝트 디렉토리로 이동
+cd library_company_data_analysis_server
+
+# 3. 최신 코드 가져오기
+git pull
+
+# 4. 기존 서비스 중지 (중요: 빌드 전 필수 작업)
+docker-compose down
+pm2 stop all
+
+# 5. 빌드
+npm run build
+
+# 6. 서비스 시작
+docker-compose up -d
+pm2 start all
+```
+
+### 주의사항
+
+- **4번 단계가 중요합니다**: `docker-compose down`과 `pm2 stop all`을 빌드 전에 실행하지 않으면 빌드 과정에서 서버가 다운될 수 있습니다.
+- 단계를 순서대로 진행해야 안전한 배포가 가능합니다.
 
 ### PM2 프로덕션 설정 (현재 운영 중)
 
@@ -978,48 +666,6 @@ pm2 logs                              # 실시간 로그
 pm2 flush                             # 로그 초기화
 ```
 
-### 실제 운영 배포 프로세스
-
-#### 현재 사용 중인 배포 절차
-
-**1. 서버 접속**
-```bash
-# SSH 키 기반 접속 (실제 사용 중)
-ssh -i /Users/tikes-seukweeo/.ssh/library_company forifwhile.xyz@35.208.29.100
-```
-
-**2. 안전한 배포 절차 (검증된 방법)**
-```bash
-# 프로젝트 디렉토리로 이동
-cd library_company_data_analysis_server
-
-# 현재 실행 중인 서비스 상태 확인
-pm2 list
-docker ps | grep libraryPostgres
-
-# ⚠️ 중요: 빌드 전 서비스 중지 (서버 다운 방지)
-pm2 stop app
-docker-compose down
-
-# 최신 코드 가져오기  
-git pull origin develop
-
-# 의존성 업데이트 (필요시)
-npm install --production
-
-# 프로덕션 빌드
-npm run build
-
-# 서비스 재시작
-docker-compose up -d
-pm2 start ecosystem.config.js
-
-# 서비스 정상 작동 확인
-pm2 list
-curl -I http://localhost:3001
-docker exec libraryPostgres pg_isready -U libraryPostgres
-```
-
 ### 데이터베이스 운영 (실제 구성)
 
 #### PostgreSQL 실제 설정
@@ -1046,81 +692,123 @@ docker exec -i libraryPostgres psql -U libraryPostgres -d libraryPostgres < back
 docker exec -i libraryPostgres psql -U libraryPostgres -d libraryPostgres < view-definitions.sql
 ```
 
-### 모니터링 및 로깅 (현재 운영 상태)
+## 사용 가이드
 
-#### PM2 모니터링 (실제 메트릭)
-```bash
-# 현재 리소스 사용량
-- Used Heap Size: 56.63 MiB
-- Heap Usage: 85.84%
-- Event Loop Latency: 0.62ms
-- HTTP Mean Latency: 1ms
-- 재시작 횟수: 1회 (24일간)
+### 콘서트 대시보드 API 사용 가이드
+
+#### 1. 좌석별 수입 현황 테이블
+```javascript
+// API 호출
+const bepData = await fetch(`${API_BASE_URL}/concert/bep`)
+  .then(res => res.json())
+  .then(data => data.filter(item => item.liveId === selectedLiveId));
+
+// 데이터 매핑
+const tableData = bepData.map(item => ({
+  좌석등급: item.seatClass,
+  전석: item.totalSeats,
+  판매: item.soldSeats,
+  초대: item.totalSeats - item.soldSeats - item.remainingSeats,
+  잔여: item.remainingSeats,
+  추가판매예상: parseInt(item.estAdditionalSales),
+  최종잔여예상: parseInt(item.estFinalRemaining),
+  'BEP %': (item.bepRatio * 100).toFixed(1) + '%'
+}));
 ```
 
-#### 로그 관리 (실제 구성)
-```bash
-# PM2 로그 위치 (실제 경로)
-~/.pm2/logs/app-out-1.log            # 일반 로그
-~/.pm2/logs/app-error-1.log          # 에러 로그
+#### 2. 일간 매출 차트
+```javascript
+// API 호출
+const dailyData = await fetch(`${API_BASE_URL}/concert/daily`)
+  .then(res => res.json())
+  .then(data => data.filter(item => item.liveId === selectedLiveId));
 
-# 로그 로테이션 설정 (현재 활성화)
-pm2 set pm2-logrotate:max_size 10M
-pm2 set pm2-logrotate:retain 7
+// 차트 데이터
+const chartData = {
+  labels: dailyData.map(item => item.recordDate),
+  datasets: [{
+    label: '일간 매출',
+    data: dailyData.map(item => item.dailySalesAmount),
+    backgroundColor: '#4CAF50'
+  }]
+};
 ```
 
-### 업로드 파일 관리 (실제 운영 데이터)
+#### 3. 주간 매출 표
+```javascript
+// API 호출
+const weeklyData = await fetch(`${API_BASE_URL}/concert/weekly`)
+  .then(res => res.json())
+  .then(data => data.filter(item => item.liveId === selectedLiveId));
 
-#### uploads 디렉토리 현황
-```bash
-# 실제 운영 중인 파일들 (85개+)
-- 파일 형식: Excel (.xlsx)
-- 총 용량: 약 80MB
-- 최신 파일: 158.xlsx (2025-07-09)
-- 파일 명명: 숫자 기반 (32.xlsx ~ 158.xlsx)
+// 테이블 데이터
+const weeklyTableData = weeklyData.map(item => ({
+  '주 시작일': item.recordWeek,
+  '세일즈': item.noteSalesMarketing,
+  '프로모션': item.notePromotion,
+  '기타': item.noteEtc,
+  '매출': item.weeklySalesAmount.toLocaleString() + '원',
+  '판매 매수': item.weeklySalesTicketNo + '매'
+}));
 ```
 
-### 보안 설정 (현재 적용 상태)
+### BEP 분석 활용
 
-#### 네트워크 보안
-```bash
-# 방화벽 상태 (실제 확인)
-- 22번 포트: SSH 접속만 허용
-- 3001번 포트: API 서버 (외부 접근 가능)
-- 1377번 포트: PostgreSQL (로컬만 접근)
-- 기타 포트: 차단됨
+#### BEP 분석 데이터
+```javascript
+// /concert/bep 응답 데이터 분석
+const bepAnalysis = {
+  현재판매율: (soldSeats / totalSeats * 100).toFixed(1) + '%',
+  BEP달성률: (bepRatio * 100).toFixed(1) + '%',
+  예상판매율: (estSalesRatio * 100).toFixed(1) + '%',
+  수익성상태: bepRatio >= 1.0 ? '목표 달성' : '목표 미달',
+  추가판매필요: Math.max(0, parseFloat(bepSeats) - soldSeats) + '석'
+};
 ```
 
-#### 접근 제어
-```bash
-# SSH 키 기반 인증 사용
-- 키 파일: /Users/tikes-seukweeo/.ssh/library_company
-- 사용자: forifwhile.xyz
-- 비밀번호 로그인: 비활성화
+### 에러 핸들링
+```javascript
+// API 호출 시 에러 처리
+const fetchConcertData = async (endpoint) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('API 호출 실패:', error);
+    return [];
+  }
+};
 ```
 
-### 운영 최적화 권장사항
+## 트러블슈팅
 
-#### 현재 개선 필요 사항
+### 자주 발생하는 문제 및 해결법
+
+#### 1. 데이터베이스 연결 실패
 ```bash
-# 1. 환경 설정 최적화
-NODE_ENV=development → production      # 성능 향상
-TYPEORM_SYNCHRONIZE=true → false      # 데이터 안전성
+# PostgreSQL 컨테이너 재시작
+docker-compose down && docker-compose up -d
 
-# 2. 메모리 최적화 (현재 1GB 제한)
-- PM2 클러스터 인스턴스 수 조정
-- 가비지 컬렉션 최적화 고려
+# 환경변수 확인
+cat .env | grep POSTGRES
 
-# 3. 디스크 관리 (현재 53% 사용)
-- 로그 로테이션 주기 점검
-- 불필요한 파일 정리
+# 포트 충돌 확인
+lsof -i :1377
 ```
 
-### 문제 해결 (실제 운영 경험 기반)
+#### 2. 포트 충돌 (3001 포트 사용 중)
+```bash
+# 포트 사용 프로세스 확인
+lsof -i :3001
 
-#### 자주 발생하는 이슈 해결법
+# 프로세스 종료
+kill -9 <PID>
+```
 
-**1. 메모리 부족 (e2-micro 제한)**
+#### 3. 메모리 부족 (e2-micro 제한)
 ```bash
 # 메모리 사용량 확인
 free -h                               # 958Mi 총 메모리
@@ -1130,12 +818,43 @@ pm2 monit                            # 힙 사용량 85%+ 주의
 pm2 restart app                      # 메모리 해제
 ```
 
-**2. 포트 충돌 (1377, 3001)**
-```bash
-# PostgreSQL 컨테이너 확인
-docker-compose ps
-docker-compose logs postgres
+### 유용한 개발 명령어
 
-# 연결 테스트
-docker exec -it library_company_postgres psql -U postgres -l
+```bash
+# 코드 포매팅
+npm run format
+
+# 린트 검사
+npm run lint
+
+# 테스트 실행
+npm run test
+
+# E2E 테스트
+npm run test:e2e
+
+# 테스트 커버리지
+npm run test:cov
 ```
+
+## 최신 업데이트 내역
+
+### 2025.07.10 - Concert Dashboard API 완료
+- 콘서트 대시보드 API 전체 구현 완료
+- 주간 매출 API (`/concert/weekly`) 추가
+- BEP 분석 및 예상 수익 API 구현
+- 마케팅 캘린더 연동 기능 추가
+- 프로덕션 서버 안정 운영 (24일 무중단)
+
+### 2025.07.09 - 시스템 아키텍처 문서화
+- 전체 시스템 아키텍처 다이어그램 작성
+- 인프라 구조도 상세 문서화
+- 데이터베이스 ERD 업데이트
+- API 엔드포인트 통합 정리
+
+---
+
+**📞 지원 및 문의**
+- 개발자: jwlee-ticket
+- 이메일: jwlee0305@ticketsquare.co.kr
+- 서버 IP: 35.208.29.100:3001
