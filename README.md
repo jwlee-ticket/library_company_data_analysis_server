@@ -302,6 +302,316 @@ graph TB
     class SLACK_API,OPENAI_API external
 ```
 
+### 데이터 파이프라인
+
+```mermaid
+graph TD
+    subgraph "Data Input Layer"
+        A1["Excel 파일 업로드<br/>POST /upload/play-excel"]
+        A2["사용자 입력<br/>목표/마케팅 설정"]
+        A3["외부 데이터<br/>LLM"]
+    end
+    
+    subgraph "Data Processing Layer"
+        B1["파일명 파싱<br/>날짜/공연ID 추출"]
+        B2["카테고리 분류<br/>콘서트/연극/뮤지컬"]
+        B3["데이터 정규화<br/>타입 검증"]
+        B4["중복 데이터 처리<br/>최신 데이터 유지"]
+    end
+    
+    subgraph "Data Storage Layer"
+        C1["Core Tables<br/>LiveModel (공연 정보)<br/>FileUploadModel (메타데이터)<br/>UserModel (사용자)"]
+        C2["Concert Data<br/>ConcertTicketSaleModel<br/>ConcertSeatSaleModel"]
+        C3["Play Data<br/>PlayTicketSaleModel<br/>PlayShowSaleModel"]
+        C4["Management Data<br/>DailyTargetModel<br/>WeeklyMarketingCalendarModel<br/>CalendarModel"]
+    end
+    
+    subgraph "Data Analysis Layer"
+        D1["Real-time Views (30+)<br/>view_con_* (콘서트 분석)<br/>view_llm_play_* (연극 분석)<br/>자동 집계 및 계산"]
+        D2["Business Logic<br/>BEP 분석<br/>수익성 계산<br/>점유율 분석"]
+        D3["AI Processing<br/>OpenAI 연동<br/>예측 분석<br/>인사이트 생성"]
+    end
+    
+    subgraph "Data Output Layer"
+        E1["REST API<br/>30+ 엔드포인트<br/>JSON 응답<br/>Swagger 문서화"]
+        E2["Real-time Dashboard<br/>Frontend 연동<br/>차트/테이블 데이터<br/>실시간 업데이트"]
+        E3["Notification System<br/>Slack Webhook<br/>일일/주간 리포트<br/>알림 전송"]
+        E4["File Downloads<br/>Excel 다운로드<br/>원본 파일 제공<br/>백업 기능"]
+    end
+    
+    %% Data Flow
+    A1 --> B1
+    A2 --> B3
+    A3 --> D3
+    
+    B1 --> B2
+    B2 --> B3
+    B3 --> B4
+    
+    B4 --> C1
+    B2 -->|콘서트| C2
+    B2 -->|연극/뮤지컬| C3
+    A2 --> C4
+    
+    C1 --> D1
+    C2 --> D1
+    C3 --> D1
+    C4 --> D1
+    
+    D1 --> D2
+    D2 --> D3
+    
+    D1 --> E1
+    D2 --> E1
+    D3 --> E1
+    
+    E1 --> E2
+    E1 --> E3
+    C1 --> E4
+    
+    %% Styling
+    classDef input fill:#e8f5e8,stroke:#4caf50,stroke-width:2px
+    classDef process fill:#fff3e0,stroke:#ff9800,stroke-width:2px
+    classDef storage fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
+    classDef analysis fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    classDef output fill:#ffebee,stroke:#f44336,stroke-width:2px
+    
+    class A1,A2,A3 input
+    class B1,B2,B3,B4 process
+    class C1,C2,C3,C4 storage
+    class D1,D2,D3 analysis
+    class E1,E2,E3,E4 output
+```
+
+### 데이터베이스 ERD
+
+```mermaid
+erDiagram
+    UserModel {
+        int id PK
+        string email UK
+        string password
+        string name UK
+        int role
+        boolean isFileUploader
+        boolean isLiveManager
+        text[] liveNameList
+        boolean status
+        timestamp updatedAt
+        timestamp createdAt
+    }
+    
+    LiveModel {
+        int id PK
+        string liveId UK
+        string category
+        boolean isLive
+        string liveName
+        string location
+        date showStartDate
+        date showEndDate
+        date saleStartDate
+        date saleEndDate
+        int runningTime
+        decimal targetShare
+        bigint bep
+        int showTotalSeatNumber
+        date previewEndingDate
+        date latestRecordDate
+        timestamp concertDateTime
+        int concertSeatNumberR
+        int concertSeatNumberS
+        int concertSeatNumberA
+        int concertSeatNumberB
+        int concertSeatNumberVip
+        timestamp createdAt
+    }
+    
+    FileUploadModel {
+        int id PK
+        string fileName
+        date recordDate
+        string uploadBy
+        boolean isSavedFile
+        timestamp uploadDate
+        timestamp deleteDate
+    }
+    
+    PlayTicketSaleModel {
+        int id PK
+        string liveId
+        date recordDate
+        int salesDate
+        bigint ticketSalesAmount
+        int ticketSalesNo
+    }
+    
+    PlayShowSaleModel {
+        int id PK
+        date recordDate
+        string liveId
+        timestamp showDateTime
+        text[] cast
+        int paidSeatSales
+        int paidSeatTot
+        int paidSeatVip
+        int paidSeatA
+        int paidSeatS
+        int paidSeatR
+        int paidBadSeatA
+        int paidBadSeatS
+        int paidBadSeatR
+        int paidDisableSeat
+        int inviteSeatTot
+        int inviteSeatVip
+        int inviteSeatA
+        int inviteSeatS
+        int inviteSeatR
+        int inviteBadSeatA
+        int inviteBadSeatS
+        int inviteBadSeatR
+        int inviteDisableSeat
+        decimal depositShare
+        decimal paidShare
+        decimal freeShare
+    }
+    
+    ConcertTicketSaleModel {
+        int id PK
+        string liveId
+        date recordDate
+        int salesDate
+        bigint ticketSalesAmount
+        int ticketSalesNo
+    }
+    
+    ConcertSeatSaleModel {
+        int id PK
+        date recordDate
+        timestamp showDateTime
+        string liveId
+        int paidSeatR
+        int paidSeatS
+        int paidSeatA
+        int paidSeatB
+        int paidSeatVip
+        int paidSeatTot
+        int inviteSeatR
+        int inviteSeatS
+        int inviteSeatA
+        int inviteSeatB
+        int inviteSeatVip
+        int inviteSeatTot
+        int remainSeatTot
+        int totalSeatTot
+        decimal totalSeatSalesRate
+        decimal paidSalesRate
+        decimal inviteSalesRate
+        decimal remainSalesRate
+    }
+    
+    DailyTargetModel {
+        int id PK
+        date date
+        int target
+        timestamp createdAt
+    }
+    
+    WeeklyMarketingCalendarModel {
+        int id PK
+        int weekNumber
+        date weekStartDate
+        date weekEndDate
+        text salesMarketing
+        text promotion
+        text etc
+        timestamp createdAt
+    }
+    
+    CalendarModel {
+        int id PK
+        date date
+        string noteSales
+        string noteMarketing
+        string noteOthers
+        timestamp createdAt
+    }
+    
+    MonthlyEtcModel {
+        int id PK
+        int year
+        int month
+        text etc
+        timestamp updatedAt
+    }
+    
+    %% Database Views (Read-Only)
+    ViewConAllDaily {
+        string liveId
+        string liveName
+        date recordDate
+        string recordMonth
+        date recordWeek
+        int dailySalesTicketNo
+        bigint dailySalesAmount
+    }
+    
+    ViewLlmPlayDaily {
+        int id
+        string liveId
+        string liveName
+        date latestRecordDate
+        int showTotalSeatNumber
+        bigint dailySales
+        date startDate
+        date endDate
+        date recordDate
+        timestamp showDateTime
+        string cast
+        int paidSeatSales
+        int paidSeatTot
+        decimal paidShare
+    }
+    
+    ViewConBep {
+        string liveId
+        string liveName
+        date latestRecordDate
+        date salesStartDate
+        date salesEndDate
+        string seatClass
+        int seatOrder
+        int totalSeats
+        int soldSeats
+        int remainingSeats
+        decimal estAdditionalSales
+        decimal estFinalRemaining
+        decimal bepSeats
+        decimal bepRatio
+        decimal estSalesRatio
+    }
+    
+    %% Relationships
+    LiveModel ||--o{ FileUploadModel : "has uploads"
+    LiveModel ||--o{ DailyTargetModel : "has targets"
+    LiveModel ||--o{ WeeklyMarketingCalendarModel : "has marketing"
+    
+    FileUploadModel ||--o{ PlayTicketSaleModel : "contains play data"
+    FileUploadModel ||--o{ PlayShowSaleModel : "contains show data"
+    FileUploadModel ||--o{ ConcertTicketSaleModel : "contains concert data"
+    FileUploadModel ||--o{ ConcertSeatSaleModel : "contains seat data"
+    
+    %% View Dependencies (logical relationships)
+    LiveModel ||--o{ ViewConAllDaily : "aggregates from"
+    LiveModel ||--o{ ViewLlmPlayDaily : "aggregates from"
+    LiveModel ||--o{ ViewConBep : "calculates from"
+    
+    PlayTicketSaleModel ||--o{ ViewLlmPlayDaily : "feeds into"
+    PlayShowSaleModel ||--o{ ViewLlmPlayDaily : "feeds into"
+    ConcertTicketSaleModel ||--o{ ViewConAllDaily : "feeds into"
+    ConcertSeatSaleModel ||--o{ ViewConBep : "feeds into"
+```
+
 ### 아키텍처 특징
 
 #### 모듈화된 아키텍처
