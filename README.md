@@ -338,14 +338,14 @@ graph TD
     end
     
     subgraph "Data Analysis Layer"
-        D1["Real-time Views (35+)<br/>view_con_* (콘서트 분석)<br/>view_play_* (프론트엔드 대시보드)<br/>view_llm_play_* (연극 LLM 분석)"]
+        D1["Real-time Views<br/>view_con_* (콘서트 분석)<br/>view_play_* (연극/뮤지컬 분석)<br/>view_llm_play_* (연극 LLM 분석)"]
         D2["Business Logic<br/>BEP 분석<br/>수익성 계산<br/>점유율 분석"]
         D3["OpenAI 연동<br/>예측 분석<br/>인사이트 생성"]
     end
     
     subgraph "Data Output Layer"
         E1["REST API<br/>JSON 응답<br/>Swagger 문서화"]
-        E2["Real-time Dashboard<br/>Frontend 연동<br/>차트/테이블 데이터"]
+        E2["Frontend 연동<br/>차트/테이블 데이터"]
         E3["Notification System<br/>Slack Webhook<br/>일일/주간 리포트<br/>알림 전송"]
         E4["File Downloads<br/>Excel 다운로드<br/>원본 파일 제공<br/>백업 기능"]
     end
@@ -356,6 +356,7 @@ graph TD
     A3 --> D3
     
     B1 --> B2
+    B2 --> B3
     B3 --> B4
     
     B4 --> C1
