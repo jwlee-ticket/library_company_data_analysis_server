@@ -9,6 +9,12 @@ import { PlayTicketSaleModel } from './entities/play-ticket-sale.entity';
 import { ViewLlmPlayWeeklyA } from 'src/report/entities/view-llm-play-weekly-a.entity';
 import { ViewLlmPlayDaily } from 'src/report/entities/view-llm-play-daily.entity';
 import { ViewLlmPlayWeeklyPaidshare } from 'src/report/entities/view_llm_play_weekly_paidshare.entity';
+// 추가 뷰 엔티티들
+import { ViewPlayAllShowtime } from 'src/report/entities/view-play-all-showtime.entity';
+import { ViewPlayMonthlyAll } from 'src/report/entities/view-play-monthly-all.entity';
+import { ViewPlayMonthlyRespective } from 'src/report/entities/view-play-monthly-respective.entity';
+import { ViewPlayOverallRevenueAnalysis } from 'src/report/entities/view-play-overall-revenue-analysis.entity';
+import { ViewPlayRevenueByCast } from 'src/report/entities/view-play-revenue-by-cast.entity';
 
 @Injectable()
 export class PlayService {
@@ -28,7 +34,129 @@ export class PlayService {
     private readonly viewLlmPlayDailyRepository: Repository<ViewLlmPlayDaily>,
     @InjectRepository(ViewLlmPlayWeeklyPaidshare)
     private readonly viewLlmPlayWeeklyPaidshareRepository: Repository<ViewLlmPlayWeeklyPaidshare>,
+    // 추가 뷰 레포지토리들
+    @InjectRepository(ViewPlayAllShowtime)
+    private readonly viewPlayAllShowtimeRepository: Repository<ViewPlayAllShowtime>,
+    @InjectRepository(ViewPlayMonthlyAll)
+    private readonly viewPlayMonthlyAllRepository: Repository<ViewPlayMonthlyAll>,
+    @InjectRepository(ViewPlayMonthlyRespective)
+    private readonly viewPlayMonthlyRespectiveRepository: Repository<ViewPlayMonthlyRespective>,
+    @InjectRepository(ViewPlayOverallRevenueAnalysis)
+    private readonly viewPlayOverallRevenueAnalysisRepository: Repository<ViewPlayOverallRevenueAnalysis>,
+    @InjectRepository(ViewPlayRevenueByCast)
+    private readonly viewPlayRevenueByCastRepository: Repository<ViewPlayRevenueByCast>,
   ) { }
+
+  /**
+   * 연극/뮤지컬 월별 전체 매출 조회
+   * 최근 1년간 월별 매출 통계 및 증감률
+   * ✅ 콘서트 데이터 제외
+   */
+  async getPlayMonthlySummary(): Promise<ViewPlayMonthlyAll[]> {
+    try {
+      const data = await this.viewPlayMonthlyAllRepository.find({
+        order: {
+          month_str: 'DESC'
+        }
+      });
+        
+      this.logger.debug(`연극/뮤지컬 월별 전체 매출 ${data.length}건 조회 완료`);
+      return data;
+    } catch (error) {
+      this.logger.error('연극/뮤지컬 월별 전체 매출 조회 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 연극/뮤지컬 월별 공연별 매출 조회
+   * 최근 1년간 월별 각 공연의 매출 통계
+   * ✅ 콘서트 데이터 자동 제외 (뷰에서 처리)
+   */
+  async getPlayMonthlyByPerformance(): Promise<ViewPlayMonthlyRespective[]> {
+    try {
+      const data = await this.viewPlayMonthlyRespectiveRepository.find({
+        order: {
+          month: 'DESC',
+          performance_name: 'ASC',
+        },
+        take: 300,
+      });
+
+      this.logger.debug(`연극/뮤지컬 월별 공연별 매출 ${data.length}건 조회 완료`);
+      return data;
+    } catch (error) {
+      this.logger.error('연극/뮤지컬 월별 공연별 매출 조회 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 연극/뮤지컬 매출 분석 조회
+   * 총 매출, 목표 대비 실적, 최근 일자 매출 분석
+   * ✅ 콘서트 데이터 자동 제외 (뷰에서 처리)
+   */
+  async getPlayRevenueAnalysis(): Promise<ViewPlayOverallRevenueAnalysis[]> {
+    try {
+      const data = await this.viewPlayOverallRevenueAnalysisRepository.find({
+        order: {
+          liveId: 'ASC',
+        },
+      });
+
+      this.logger.debug(`연극/뮤지컬 매출 분석 ${data.length}건 조회 완료`);
+      return data;
+    } catch (error) {
+      this.logger.error('연극/뮤지컬 매출 분석 조회 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 연극/뮤지컬 캐스트별 매출 조회
+   * 캐스트별 매출 실적 및 공연 횟수
+   * ✅ 콘서트 데이터 자동 제외 (뷰에서 처리)
+   */
+  async getPlayCastRevenue(): Promise<ViewPlayRevenueByCast[]> {
+    try {
+      const data = await this.viewPlayRevenueByCastRepository.find({
+        order: {
+          totalpaidseatsales: 'DESC',
+        },
+      });
+
+      this.logger.debug(`연극/뮤지컬 캐스트별 매출 ${data.length}건 조회 완료`);
+      return data;
+    } catch (error) {
+      this.logger.error('연극/뮤지컬 캐스트별 매출 조회 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 연극/뮤지컬 전체 공연 일정 조회
+   * 모든 공연 일정과 상세 정보
+   * ✅ 콘서트 데이터 제외
+   */
+  async getPlayAllShowtime(): Promise<ViewPlayAllShowtime[]> {
+    try {
+      // Raw query로 콘서트 제외 필터링
+      const data = await this.viewPlayAllShowtimeRepository
+        .createQueryBuilder('showtime')
+        .innerJoin('live_model', 'live', 'showtime."liveId_" = live."liveId"')
+        .where('live.category != :category', { category: '콘서트' })
+        .andWhere('live."isLive" = :isLive', { isLive: true })
+        .orderBy('showtime."showDateTime"', 'DESC')
+        .addOrderBy('showtime."liveName"', 'ASC')
+        .getMany();
+        
+      this.logger.debug(`연극/뮤지컬 전체 공연 일정 ${data.length}건 조회 완료 (콘서트 제외)`);
+      return data;
+    } catch (error) {
+      this.logger.error('연극/뮤지컬 전체 공연 일정 조회 실패:', error);
+      throw error;
+    }
+  }
 
   /**
    * 연극/뮤지컬 주간 목표 대비 실적 데이터 조회

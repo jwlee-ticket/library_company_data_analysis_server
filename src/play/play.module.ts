@@ -10,6 +10,12 @@ import { PlayTicketSaleModel } from './entities/play-ticket-sale.entity';
 import { ViewLlmPlayWeeklyA } from 'src/report/entities/view-llm-play-weekly-a.entity';
 import { ViewLlmPlayDaily } from 'src/report/entities/view-llm-play-daily.entity';
 import { ViewLlmPlayWeeklyPaidshare } from 'src/report/entities/view_llm_play_weekly_paidshare.entity';
+// 추가 뷰 엔티티들
+import { ViewPlayAllShowtime } from 'src/report/entities/view-play-all-showtime.entity';
+import { ViewPlayMonthlyAll } from 'src/report/entities/view-play-monthly-all.entity';
+import { ViewPlayMonthlyRespective } from 'src/report/entities/view-play-monthly-respective.entity';
+import { ViewPlayOverallRevenueAnalysis } from 'src/report/entities/view-play-overall-revenue-analysis.entity';
+import { ViewPlayRevenueByCast } from 'src/report/entities/view-play-revenue-by-cast.entity';
 
 @Module({
   imports: [
@@ -22,6 +28,11 @@ import { ViewLlmPlayWeeklyPaidshare } from 'src/report/entities/view_llm_play_we
       ViewLlmPlayWeeklyA,
       ViewLlmPlayDaily,
       ViewLlmPlayWeeklyPaidshare,
+      ViewPlayAllShowtime,
+      ViewPlayMonthlyAll,
+      ViewPlayMonthlyRespective,
+      ViewPlayOverallRevenueAnalysis,
+      ViewPlayRevenueByCast,
     ]),
   ],
   controllers: [PlayController],
