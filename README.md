@@ -111,10 +111,11 @@ graph TB
     subgraph "Data Layer"
         F["PostgreSQL Database<br/>Port: 1377<br/>Container: libraryPostgres"]
         
-        subgraph "Database Views (30+)"
+        subgraph "Database Views (35+)"
             G1["Concert Views<br/>view_con_*<br/>콘서트 분석 뷰"]
-            G2["Play Views<br/>view_llm_play_*<br/>연극 분석 뷰"]
-            G3["Marketing Views<br/>마케팅 분석 뷰"]
+            G2["Play LLM Views<br/>view_llm_play_*<br/>연극 LLM 분석 뷰"]
+            G3["Play Dashboard Views<br/>view_play_*<br/>프론트엔드 대시보드 뷰"]
+            G4["Marketing Views<br/>마케팅 분석 뷰"]
         end
         
         subgraph "Core Tables"
@@ -175,6 +176,7 @@ graph TB
     F --> G1
     F --> G2
     F --> G3
+    F --> G4
     F --> H1
     F --> H2
     F --> H3
@@ -204,7 +206,7 @@ graph TB
     class C1,C2,C3,C4 core
     class D1,D2,D3,D4 business
     class E1,E2,E3,E4,E5 support
-    class F,G1,G2,G3,H1,H2,H3,H4 database
+    class F,G1,G2,G3,G4,H1,H2,H3,H4 database
     class I1,I2 external
     class J1,J2,J3 infra
 ```
@@ -336,14 +338,14 @@ graph TD
     end
     
     subgraph "Data Analysis Layer"
-        D1["Real-time Views (30+)<br/>view_con_* (콘서트 분석)<br/>view_llm_play_* (연극 분석)<br/>자동 집계 및 계산"]
+        D1["Real-time Views (35+)<br/>view_con_* (콘서트 분석)<br/>view_llm_play_* (연극 LLM 분석)<br/>view_play_* (프론트엔드 대시보드)<br/>자동 집계 및 계산"]
         D2["Business Logic<br/>BEP 분석<br/>수익성 계산<br/>점유율 분석"]
         D3["AI Processing<br/>OpenAI 연동<br/>예측 분석<br/>인사이트 생성"]
     end
     
     subgraph "Data Output Layer"
-        E1["REST API<br/>30+ 엔드포인트<br/>JSON 응답<br/>Swagger 문서화"]
-        E2["Real-time Dashboard<br/>Frontend 연동<br/>차트/테이블 데이터<br/>실시간 업데이트"]
+        E1["REST API<br/>35+ 엔드포인트<br/>JSON 응답<br/>Swagger 문서화"]
+        E2["Real-time Dashboard<br/>Frontend 연동<br/>차트/테이블 데이터"]
         E3["Notification System<br/>Slack Webhook<br/>일일/주간 리포트<br/>알림 전송"]
         E4["File Downloads<br/>Excel 다운로드<br/>원본 파일 제공<br/>백업 기능"]
     end
@@ -600,6 +602,32 @@ erDiagram
         decimal estSalesRatio
     }
     
+    ViewPlayAllShowtime {
+        string liveId
+        string liveName
+        timestamp showDateTime
+        text[] cast
+        int paidSeatSales
+        decimal paidShare
+        date recordDate
+    }
+    
+    ViewPlayMonthlyAll {
+        string month_str
+        bigint total_revenue
+        bigint absolute_change
+        decimal percentage_change
+        text note
+    }
+    
+    ViewPlayRevenueByCast {
+        string liveId
+        string liveName
+        string cast
+        bigint totalpaidseatsales
+        int showcount
+    }
+    
     %% Relationships
     LiveModel ||--o{ FileUploadModel : "has uploads"
     LiveModel ||--o{ DailyTargetModel : "has targets"
@@ -614,9 +642,15 @@ erDiagram
     LiveModel ||--o{ ViewConAllDaily : "aggregates from"
     LiveModel ||--o{ ViewLlmPlayDaily : "aggregates from"
     LiveModel ||--o{ ViewConBep : "calculates from"
+    LiveModel ||--o{ ViewPlayAllShowtime : "aggregates from"
+    LiveModel ||--o{ ViewPlayMonthlyAll : "aggregates from"
+    LiveModel ||--o{ ViewPlayRevenueByCast : "aggregates from"
     
     PlayTicketSaleModel ||--o{ ViewLlmPlayDaily : "feeds into"
     PlayShowSaleModel ||--o{ ViewLlmPlayDaily : "feeds into"
+    PlayShowSaleModel ||--o{ ViewPlayAllShowtime : "feeds into"
+    PlayTicketSaleModel ||--o{ ViewPlayMonthlyAll : "feeds into"
+    PlayShowSaleModel ||--o{ ViewPlayRevenueByCast : "feeds into"
     ConcertTicketSaleModel ||--o{ ViewConAllDaily : "feeds into"
     ConcertSeatSaleModel ||--o{ ViewConBep : "feeds into"
 ```
