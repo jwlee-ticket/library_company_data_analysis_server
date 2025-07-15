@@ -5,9 +5,74 @@ import { CreatePlayDto } from './dto/create-play.dto';
 import { UpdatePlayDto } from './dto/update-play.dto';
 
 @ApiTags('play')
-@Controller('play')
+@Controller('api/play')
 export class PlayController {
   constructor(private readonly playService: PlayService) { }
+
+  @Get('all-showtime')
+  @ApiOperation({ 
+    summary: '연극/뮤지컬 전체 공연 일정',
+    description: '모든 공연 일정과 상세 정보 (캐스트, 좌석, 매출 등)'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '전체 공연 일정 조회 성공'
+  })
+  async getPlayAllShowtime() {
+    return await this.playService.getPlayAllShowtime();
+  }
+
+  @Get('monthly-summary')
+  @ApiOperation({ 
+    summary: '연극/뮤지컬 월별 전체 매출',
+    description: '최근 1년간 월별 매출 통계 및 전월 대비 증감률'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '월별 전체 매출 조회 성공'
+  })
+  async getPlayMonthlySummary() {
+    return await this.playService.getPlayMonthlySummary();
+  }
+
+  @Get('monthly-by-performance')
+  @ApiOperation({ 
+    summary: '연극/뮤지컬 월별 공연별 매출',
+    description: '최근 1년간 월별 각 공연의 매출 통계'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '월별 공연별 매출 조회 성공'
+  })
+  async getPlayMonthlyByPerformance() {
+    return await this.playService.getPlayMonthlyByPerformance();
+  }
+
+  @Get('revenue-analysis')
+  @ApiOperation({ 
+    summary: '연극/뮤지컬 매출 분석',
+    description: '총 매출, 목표 대비 실적, 최근 일자 매출 분석'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '매출 분석 조회 성공'
+  })
+  async getPlayRevenueAnalysis() {
+    return await this.playService.getPlayRevenueAnalysis();
+  }
+
+  @Get('cast-revenue')
+  @ApiOperation({ 
+    summary: '연극/뮤지컬 캐스트별 매출',
+    description: '캐스트별 매출 실적 및 공연 횟수'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '캐스트별 매출 조회 성공'
+  })
+  async getPlayCastRevenue() {
+    return await this.playService.getPlayCastRevenue();
+  }
 
   @Get('summary')
   @ApiOperation({ 

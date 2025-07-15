@@ -44,6 +44,12 @@ import { ViewConWeeklyMarketingCalendar } from './report/entities/view_con_weekl
 import { ViewConEstProfit } from './report/entities/view_con_est_profit.entity';
 import { ViewConAllWeekly } from './report/entities/view_con_all_weekly.entity';
 import { LocalScheduleModule } from './local-schedule/local-schedule.module';
+// 새로 추가된 Play 관련 뷰 엔티티들
+import { ViewPlayAllShowtime } from './report/entities/view-play-all-showtime.entity';
+import { ViewPlayMonthlyAll } from './report/entities/view-play-monthly-all.entity';
+import { ViewPlayMonthlyRespective } from './report/entities/view-play-monthly-respective.entity';
+import { ViewPlayOverallRevenueAnalysis } from './report/entities/view-play-overall-revenue-analysis.entity';
+import { ViewPlayRevenueByCast } from './report/entities/view-play-revenue-by-cast.entity';
 
 @Module({
   imports: [
@@ -94,6 +100,13 @@ import { LocalScheduleModule } from './local-schedule/local-schedule.module';
           ViewConWeeklyMarketingCalendar,
           ViewConEstProfit,
           ViewConAllWeekly,
+          
+          // 새로 추가된 Play 관련 뷰 엔티티들
+          ViewPlayAllShowtime,
+          ViewPlayMonthlyAll,
+          ViewPlayMonthlyRespective,
+          ViewPlayOverallRevenueAnalysis,
+          ViewPlayRevenueByCast,
         ],
         synchronize: true,
         logging: true,
