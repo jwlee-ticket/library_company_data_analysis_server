@@ -1,5 +1,9 @@
 # 라이브러리컴퍼니 공연 데이터 분석 서버
 
+> **무료 운영 중**: GCP 무료 티어로 월 $0 비용으로 안정적인 서비스 제공  
+> **24일 무중단 운영**: PM2 클러스터 모드로 검증된 안정성  
+> **8개 Play API 완료**: 프론트엔드 대시보드 연동 준비 완료  
+
 ## 프로젝트 개요
 
 라이브러리컴퍼니의 공연 예술 업계(콘서트, 연극/뮤지컬) 데이터를 종합적으로 관리하고 분석하는 백엔드 서버입니다.
@@ -11,10 +15,15 @@
 - 목표 매출 대비 실적 분석
 - 다양한 리포트 및 대시보드 제공
 
+### 비용 효율성
+- **무료 운영**: GCP 무료 티어 완전 활용 (월 $0)
+- **최적화된 아키텍처**: 단일 인스턴스로 고가용성 서비스
+- **확장 가능**: 트래픽 증가 시 점진적 스케일업 가능
+
 ### 서버 정보
 - **개발 서버**: `http://localhost:3001`
 - **프로덕션 서버**: `http://35.208.29.100:3001`
-- **Swagger 문서**: `http://35.208.29.100:3001/api`
+- **Swagger 문서**: `http://35.208.29.100:3001/api-docs`
 - **운영 현황**: 24일간 무중단 운영 (안정성 검증됨)
 
 ## 기술 스택
@@ -85,7 +94,7 @@ graph TB
         
         subgraph "Business Modules"
             D1["ConcertModule<br/>콘서트 분석<br/>매출/BEP 분석"]
-            D2["PlayModule<br/>연극/뮤지컬<br/>공연 데이터"]
+            D2["PlayModule<br/>연극/뮤지컬<br/>8개 API 구현<br/>프론트엔드 대시보드"]
             D3["ReportModule<br/>리포트 생성<br/>AI 분석 연동"]
             D4["TargetModule<br/>목표 관리<br/>실적 비교"]
         end
@@ -102,10 +111,11 @@ graph TB
     subgraph "Data Layer"
         F["PostgreSQL Database<br/>Port: 1377<br/>Container: libraryPostgres"]
         
-        subgraph "Database Views (30+)"
+        subgraph "Database Views (35+)"
             G1["Concert Views<br/>view_con_*<br/>콘서트 분석 뷰"]
-            G2["Play Views<br/>view_llm_play_*<br/>연극 분석 뷰"]
-            G3["Marketing Views<br/>마케팅 분석 뷰"]
+            G2["Play LLM Views<br/>view_llm_play_*<br/>연극 LLM 분석 뷰"]
+            G3["Play Dashboard Views<br/>view_play_*<br/>프론트엔드 대시보드 뷰"]
+            G4["Marketing Views<br/>마케팅 분석 뷰"]
         end
         
         subgraph "Core Tables"
@@ -166,6 +176,7 @@ graph TB
     F --> G1
     F --> G2
     F --> G3
+    F --> G4
     F --> H1
     F --> H2
     F --> H3
@@ -195,7 +206,7 @@ graph TB
     class C1,C2,C3,C4 core
     class D1,D2,D3,D4 business
     class E1,E2,E3,E4,E5 support
-    class F,G1,G2,G3,H1,H2,H3,H4 database
+    class F,G1,G2,G3,G4,H1,H2,H3,H4 database
     class I1,I2 external
     class J1,J2,J3 infra
 ```
@@ -327,14 +338,14 @@ graph TD
     end
     
     subgraph "Data Analysis Layer"
-        D1["Real-time Views (30+)<br/>view_con_* (콘서트 분석)<br/>view_llm_play_* (연극 분석)<br/>자동 집계 및 계산"]
+        D1["Real-time Views<br/>view_con_* (콘서트 분석)<br/>view_play_* (연극/뮤지컬 분석)<br/>view_llm_play_* (연극 LLM 분석)"]
         D2["Business Logic<br/>BEP 분석<br/>수익성 계산<br/>점유율 분석"]
-        D3["AI Processing<br/>OpenAI 연동<br/>예측 분석<br/>인사이트 생성"]
+        D3["OpenAI 연동<br/>예측 분석<br/>인사이트 생성"]
     end
     
     subgraph "Data Output Layer"
-        E1["REST API<br/>30+ 엔드포인트<br/>JSON 응답<br/>Swagger 문서화"]
-        E2["Real-time Dashboard<br/>Frontend 연동<br/>차트/테이블 데이터<br/>실시간 업데이트"]
+        E1["REST API<br/>JSON 응답<br/>Swagger 문서화"]
+        E2["Frontend 연동<br/>차트/테이블 데이터"]
         E3["Notification System<br/>Slack Webhook<br/>일일/주간 리포트<br/>알림 전송"]
         E4["File Downloads<br/>Excel 다운로드<br/>원본 파일 제공<br/>백업 기능"]
     end
@@ -591,6 +602,32 @@ erDiagram
         decimal estSalesRatio
     }
     
+    ViewPlayAllShowtime {
+        string liveId
+        string liveName
+        timestamp showDateTime
+        text[] cast
+        int paidSeatSales
+        decimal paidShare
+        date recordDate
+    }
+    
+    ViewPlayMonthlyAll {
+        string month_str
+        bigint total_revenue
+        bigint absolute_change
+        decimal percentage_change
+        text note
+    }
+    
+    ViewPlayRevenueByCast {
+        string liveId
+        string liveName
+        string cast
+        bigint totalpaidseatsales
+        int showcount
+    }
+    
     %% Relationships
     LiveModel ||--o{ FileUploadModel : "has uploads"
     LiveModel ||--o{ DailyTargetModel : "has targets"
@@ -605,9 +642,15 @@ erDiagram
     LiveModel ||--o{ ViewConAllDaily : "aggregates from"
     LiveModel ||--o{ ViewLlmPlayDaily : "aggregates from"
     LiveModel ||--o{ ViewConBep : "calculates from"
+    LiveModel ||--o{ ViewPlayAllShowtime : "aggregates from"
+    LiveModel ||--o{ ViewPlayMonthlyAll : "aggregates from"
+    LiveModel ||--o{ ViewPlayRevenueByCast : "aggregates from"
     
     PlayTicketSaleModel ||--o{ ViewLlmPlayDaily : "feeds into"
     PlayShowSaleModel ||--o{ ViewLlmPlayDaily : "feeds into"
+    PlayShowSaleModel ||--o{ ViewPlayAllShowtime : "feeds into"
+    PlayTicketSaleModel ||--o{ ViewPlayMonthlyAll : "feeds into"
+    PlayShowSaleModel ||--o{ ViewPlayRevenueByCast : "feeds into"
     ConcertTicketSaleModel ||--o{ ViewConAllDaily : "feeds into"
     ConcertSeatSaleModel ||--o{ ViewConBep : "feeds into"
 ```
@@ -629,9 +672,15 @@ erDiagram
 - **캐싱 전략**: TypeORM 엔티티 캐싱 및 뷰 기반 데이터 제공
 - **무중단 운영**: PM2 클러스터 모드로 24시간 안정 서비스
 
+#### 비용 효율성
+- **무료 인프라**: GCP 무료 티어 완전 활용 (e2-micro 인스턴스)
+- **리소스 최적화**: 메모리 사용량 90% 이하 유지로 안정적 운영
+- **단일 인스턴스 아키텍처**: 별도 DB 서버 없이 Docker 컨테이너로 운영
+- **스케일링 전략**: 트래픽 증가 시 점진적 업그레이드 가능
+
 ## API 엔드포인트
 
-### 🎭 콘서트 관련 API
+### 콘서트 관련 API
 
 #### 일반 데이터 조회
 - `GET /concert/daily` - 콘서트 일일 매출 데이터
@@ -645,9 +694,23 @@ erDiagram
 - `GET /concert/target-sales` - 콘서트 목표 매출 대비 실적
 - `GET /concert/marketing-calendar` - 콘서트 주간 마케팅 캘린더
 
-### 🎪 연극/뮤지컬 관련 API
+### 연극/뮤지컬 관련 API
 
-#### 데이터 조회
+#### 프론트엔드 대시보드 API (2025.07.15 최신 추가)
+
+**새로 추가된 5개 API:**
+- `GET /api/play/all-showtime` - 전체 공연 일정 조회
+- `GET /api/play/monthly-summary` - 월별 전체 매출 통계 (13개월)
+- `GET /api/play/monthly-by-performance` - 월별 공연별 매출 분석
+- `GET /api/play/revenue-analysis` - 매출 분석 (목표 대비 실적)
+- `GET /api/play/cast-revenue` - 캐스트별 매출 통계
+
+**기존 3개 API:**
+- `GET /api/play/weekly-overview` - 주간 목표 대비 실적
+- `GET /api/play/daily-details` - 공연별 상세 정보
+- `GET /api/play/occupancy-rate` - 유료 점유율 분석
+
+#### LLM 분석용 API (백엔드 전용)
 - `GET /report/llm-play-daily` - 연극 일일 매출 데이터
 - `GET /report/llm-play-weekly-a` - 연극 주간 매출 데이터 (A 타입)
 - `GET /report/llm-play-weekly-b` - 연극 주간 매출 데이터 (B 타입)
@@ -656,45 +719,45 @@ erDiagram
 - `GET /report/llm-play-est-profit` - 연극 예상 수익
 - `GET /report/llm-play-weekly-paidshare` - 연극 주간 유료 점유율
 
-### 👥 사용자 관리 API
+### 사용자 관리 API
 
 - `GET /users/get-users` - 사용자 목록 조회
 - `POST /users` - 사용자 생성
 - `PATCH /users/:id` - 사용자 정보 수정
 - `DELETE /users/:id` - 사용자 삭제
 
-### 🎪 공연 관리 API
+### 공연 관리 API
 
 - `GET /live` - 공연 목록 조회
 - `POST /live` - 공연 생성
 - `PATCH /live/:id` - 공연 정보 수정
 - `DELETE /live/:id` - 공연 삭제
 
-### 📁 파일 업로드 API
+### 파일 업로드 API
 
 - `POST /upload` - 파일 업로드
 - `GET /upload` - 업로드 파일 목록 조회
 - `DELETE /upload/:id` - 업로드 파일 삭제
 
-### 🎯 목표 관리 API
+### 목표 관리 API
 
 - `GET /target` - 목표 설정 조회
 - `POST /target` - 목표 설정
 - `PATCH /target/:id` - 목표 수정
 
-### 📅 캘린더 API
+### 캘린더 API
 
 - `GET /calendar` - 캘린더 일정 조회
 - `POST /calendar` - 일정 생성
 - `PATCH /calendar/:id` - 일정 수정
 
-### 📊 마케팅 API
+### 마케팅 API
 
 - `GET /marketing` - 마케팅 캘린더 조회
 - `POST /marketing` - 마케팅 일정 생성
 - `PATCH /marketing/:id` - 마케팅 일정 수정
 
-### 🔔 알림 API
+### 알림 API
 
 - `POST /slack` - Slack 알림 전송
 - `GET /slack` - 알림 내역 조회
@@ -722,7 +785,7 @@ erDiagram
 ```bash
 # PostgreSQL 연결 정보
 POSTGRES_HOST=127.0.0.1
-POSTGRES_PORT=1377                    # ⚠️ 주의: 기본 5432가 아님!
+POSTGRES_PORT=1377                    # 주의: 기본 5432가 아님!
 POSTGRES_USER=libraryPostgres
 POSTGRES_PASSWORD=your_password       # 보안을 위해 변경하세요
 POSTGRES_DB=libraryPostgres
@@ -747,7 +810,7 @@ NODE_ENV=development
 
 #### 1. PostgreSQL 컨테이너 실행
 
-⚠️ **중요**: 운영 서버와 동일한 포트(1377) 사용을 위해 `docker-compose.yaml` 수정:
+**중요**: 운영 서버와 동일한 포트(1377) 사용을 위해 `docker-compose.yaml` 수정:
 
 ```yaml
 version: '3.3'
@@ -862,7 +925,7 @@ open http://localhost:3001
 
 ### 포트 설정 주의사항
 
-⚠️ **중요**: 이 프로젝트는 **비표준 포트**를 사용합니다:
+**중요**: 이 프로젝트는 **비표준 포트**를 사용합니다:
 - **PostgreSQL**: 5432 → **1377** 사용
 - **API 서버**: **3001** 사용
 
@@ -883,7 +946,37 @@ open http://localhost:3001
 - 외부IP: 35.208.29.100
 ```
 
-#### 2. 실행 중인 서비스 현황
+#### 2. 서버 운영 비용
+
+**GCP 무료 티어 활용**
+- **e2-micro 인스턴스**: 월 744시간 무료 (24시간 × 31일)
+- **무료 외부 IP**: 인스턴스 사용 중일 때 무료
+- **무료 디스크**: 30GB 표준 영구 디스크 무료
+- **무료 네트워크**: 월 1GB 아웃바운드 트래픽 무료
+
+**실제 운영 비용**
+```bash
+# 현재 운영 중인 서버 비용 (월 기준)
+- 컴퓨팅 비용: $0 (무료 티어 범위 내)
+- 디스크 비용: $0 (30GB 무료 범위 내)
+- 네트워크 비용: $0 (저용량 API 서버)
+- 외부 IP 비용: $0 (인스턴스 사용 중)
+- 총 월 비용: $0 (무료 티어 완전 활용)
+```
+
+**비용 최적화 전략**
+- **무료 티어 활용**: e2-micro 인스턴스로 소규모 서비스 운영
+- **효율적 리소스 사용**: 메모리 사용량 90% 이하 유지
+- **Docker 컨테이너화**: PostgreSQL 컨테이너로 별도 DB 서버 불필요
+- **PM2 클러스터**: 단일 인스턴스로 고가용성 확보
+- **로그 로테이션**: 디스크 사용량 최적화
+
+**향후 비용 예상** (트래픽 증가 시)
+- 네트워크 아웃바운드: $0.12/GB (1GB 초과 시)
+- 인스턴스 업그레이드: e2-small ($13.87/월), e2-medium ($27.74/월)
+- 추가 디스크: $0.10/GB/월 (30GB 초과 시)
+
+#### 3. 실행 중인 서비스 현황
 ```bash
 # 24일간 무중단 운영 중 (안정성 검증됨)
 - NestJS API: 3001 포트 (PM2 클러스터 모드)
@@ -932,6 +1025,46 @@ pm2 start all
 - **4번 단계가 중요합니다**: `docker-compose down`과 `pm2 stop all`을 빌드 전에 실행하지 않으면 빌드 과정에서 서버가 다운될 수 있습니다.
 - 단계를 순서대로 진행해야 안전한 배포가 가능합니다.
 
+### 비용 모니터링 및 관리
+
+#### 1. 리소스 사용량 모니터링
+```bash
+# 서버 리소스 확인
+htop                                  # CPU, 메모리 사용량
+df -h                                 # 디스크 사용량 (16GB/29GB 사용 중)
+free -h                               # 메모리 사용량 (958Mi 총 메모리)
+pm2 monit                             # Node.js 앱 리소스 모니터링
+```
+
+#### 2. GCP 비용 모니터링
+```bash
+# GCP 콘솔에서 확인 가능한 항목
+- 청구 및 비용 관리 → 현재 무료 티어 사용량 확인
+- 컴퓨팅 엔진 → 인스턴스 사용 시간 모니터링
+- 네트워크 → 아웃바운드 트래픽 사용량 확인
+- 디스크 → 스토리지 사용량 모니터링
+```
+
+#### 3. 비용 최적화 체크리스트
+- **무료 티어 한도 확인**: 월 744시간 e2-micro 사용량 모니터링
+- **디스크 사용량 관리**: 30GB 무료 한도 내 유지 (현재 16GB/29GB)
+- **네트워크 트래픽 최적화**: 월 1GB 아웃바운드 무료 한도 관리
+- **로그 로테이션**: PM2 로그 자동 정리로 디스크 공간 확보
+- **메모리 사용량 최적화**: 85% 이하 유지로 안정적 운영
+
+#### 4. 스케일링 기준
+**현재 상황** (무료 운영 중):
+- CPU 사용률: 평균 30% 이하
+- 메모리 사용률: 85% 이하
+- 디스크 사용률: 53% (16GB/29GB)
+- 네트워크: 저용량 API 서버
+
+**업그레이드 고려 시점**:
+- 메모리 사용률 90% 이상 지속
+- 디스크 사용률 80% 이상
+- 네트워크 트래픽 1GB/월 초과
+- 응답 시간 지연 발생
+
 ### PM2 프로덕션 설정 (현재 운영 중)
 
 #### ecosystem.config.js 실제 설정
@@ -949,7 +1082,7 @@ module.exports = {
       max_restarts: 10,
       min_uptime: '60s',
       env: {
-        NODE_ENV: 'development',  // ⚠️ 현재 설정 (production 권장)
+        NODE_ENV: 'development',  // 현재 설정 (production 권장)
       },
       env_production: {
         NODE_ENV: 'production',
@@ -1149,12 +1282,37 @@ npm run test:cov
 
 ## 최신 업데이트 내역
 
+### 2025.07.15 - Play Dashboard API 완료
+- **연극/뮤지컬 대시보드 API 전체 구현 완료 (총 8개 API)**
+- **새로 추가된 5개 API** 구현:
+  - 전체 공연 일정 API (`/api/play/all-showtime`)
+  - 월별 전체 매출 API (`/api/play/monthly-summary`)
+  - 월별 공연별 매출 API (`/api/play/monthly-by-performance`)
+  - 매출 분석 API (`/api/play/revenue-analysis`)
+  - 캐스트별 매출 API (`/api/play/cast-revenue`)
+- **기존 3개 API** 라우팅 통합 (`/play/` → `/api/play/`)
+- **새로운 View Entity 5개** 추가:
+  - `ViewPlayAllShowtime` (view_play_all_showtime)
+  - `ViewPlayMonthlyAll` (view_play_monthly_all)
+  - `ViewPlayMonthlyRespective` (view_play_monthly_respective)
+  - `ViewPlayOverallRevenueAnalysis` (view_play_overall_revenue_analysis)
+  - `ViewPlayRevenueByCast` (view_play_revenue_by_cast)
+- **전체 API 테스트 완료** (8개 API 모두 정상 작동)
+- **프론트엔드 연동 준비 완료** (라우팅 통일, 테스트 결과 문서 작성)
+- **서버 비용 문서화**: GCP 무료 티어 완전 활용 (월 $0 운영)
+
 ### 2025.07.10 - Concert Dashboard API 완료
 - 콘서트 대시보드 API 전체 구현 완료
 - 주간 매출 API (`/concert/weekly`) 추가
 - BEP 분석 및 예상 수익 API 구현
 - 마케팅 캘린더 연동 기능 추가
 - 프로덕션 서버 안정 운영 (24일 무중단)
+
+### 비용 효율성 성과
+- **무료 운영 달성**: GCP 무료 티어 완전 활용으로 월 $0 운영비
+- **리소스 최적화**: e2-micro 인스턴스로 메모리 85% 효율 운영
+- **안정성 검증**: 24일 무중단 운영으로 소규모 서비스 적합성 증명
+- **확장성 확보**: 트래픽 증가 시 단계적 업그레이드 가능한 구조
 
 ### 2025.07.09 - 시스템 아키텍처 문서화
 - 전체 시스템 아키텍처 다이어그램 작성
@@ -1164,7 +1322,7 @@ npm run test:cov
 
 ---
 
-**📞 지원 및 문의**
+**지원 및 문의**
 - 개발자: jwlee-ticket
 - 이메일: jwlee0305@ticketsquare.co.kr
 - 서버 IP: 35.208.29.100:3001
