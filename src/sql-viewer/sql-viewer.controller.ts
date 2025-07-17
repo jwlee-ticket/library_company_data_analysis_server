@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { SqlViewerService } from './sql-viewer.service';
 import { ExecuteSqlDto } from './dto/execute-sql.dto';
@@ -46,5 +46,44 @@ export class SqlViewerController {
   })
   async getTableList(): Promise<string[]> {
     return this.sqlViewerService.getTableList();
+  }
+
+  @Get('schema')
+  @ApiOperation({
+    summary: '전체 스키마 정보 조회',
+    description: '모든 테이블의 컬럼 정보와 관계를 조회합니다.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: '스키마 정보 조회 성공'
+  })
+  async getAllTablesSchema() {
+    return this.sqlViewerService.getAllTablesSchema();
+  }
+
+  @Get('table/:tableName')
+  @ApiOperation({
+    summary: '특정 테이블 상세 정보 조회',
+    description: '지정된 테이블의 컬럼, 제약조건 등 상세 정보를 조회합니다.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: '테이블 상세 정보 조회 성공'
+  })
+  async getTableSchema(@Param('tableName') tableName: string) {
+    return this.sqlViewerService.getTableSchema(tableName);
+  }
+
+  @Get('relationships')
+  @ApiOperation({
+    summary: '테이블 관계 정보 조회',
+    description: 'Foreign Key 관계 정보를 조회하여 ERD 생성에 활용할 수 있습니다.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: '테이블 관계 정보 조회 성공'
+  })
+  async getTableRelationships() {
+    return this.sqlViewerService.getTableRelationships();
   }
 } 

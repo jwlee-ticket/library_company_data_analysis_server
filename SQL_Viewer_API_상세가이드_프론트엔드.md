@@ -55,7 +55,242 @@ const fetchTables = async () => {
 
 ---
 
-## ⚡ 2. SQL 쿼리 실행 API
+## 🏗️ 2. 전체 스키마 정보 조회 API
+
+### 📌 GET `/sql-execute/schema`
+모든 테이블의 컬럼 정보와 제약조건을 한 번에 조회합니다.
+
+#### 요청 데이터
+없음 (GET 요청)
+
+#### 응답 데이터
+```typescript
+interface TableSchema {
+  tableName: string;
+  columns: {
+    column_name: string;
+    data_type: string;
+    is_nullable: string;        // "YES" | "NO" 
+    column_default: string | null;
+    key_type: string | null;    // "PK" | "FK" | null
+    references_table: string | null;
+    references_column: string | null;
+  }[];
+}
+
+type SchemaResponse = TableSchema[];
+```
+
+#### 실제 응답 예시
+```json
+[
+  {
+    "tableName": "user_model",
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer", 
+        "is_nullable": "NO",
+        "column_default": "nextval('user_model_id_seq'::regclass)",
+        "key_type": "PK",
+        "references_table": null,
+        "references_column": null
+      },
+      {
+        "column_name": "email",
+        "data_type": "character varying",
+        "is_nullable": "NO", 
+        "column_default": null,
+        "key_type": null,
+        "references_table": null,
+        "references_column": null
+      }
+    ]
+  }
+]
+```
+
+#### 사용 예시
+```typescript
+const fetchSchema = async () => {
+  const response = await fetch('/sql-execute/schema');
+  const schema = await response.json();
+  
+  // 테이블별 컬럼 맵 생성
+  const tableColumnsMap = new Map();
+  schema.forEach(table => {
+    tableColumnsMap.set(table.tableName, table.columns);
+  });
+  
+  return tableColumnsMap;
+};
+```
+
+---
+
+## 🔗 3. 특정 테이블 상세 정보 조회 API
+
+### 📌 GET `/sql-execute/table/{tableName}`
+지정된 테이블의 상세한 컬럼 정보와 제약조건을 조회합니다.
+
+#### 요청 데이터
+- **Path Parameter**: `tableName` (string) - 조회할 테이블명
+
+#### 응답 데이터
+```typescript
+interface TableDetailResponse {
+  tableName: string;
+  columns: {
+    column_name: string;
+    data_type: string;
+    is_nullable: string;
+    column_default: string | null;
+    character_maximum_length: number | null;
+    numeric_precision: number | null;
+    numeric_scale: number | null;
+  }[];
+  constraints: {
+    constraint_name: string;
+    constraint_type: string;      // "PRIMARY KEY" | "FOREIGN KEY" | "UNIQUE"
+    column_name: string;
+    foreign_table_name: string | null;
+    foreign_column_name: string | null;
+  }[];
+}
+```
+
+#### 실제 응답 예시 (user_model)
+```json
+{
+  "tableName": "user_model",
+  "columns": [
+    {
+      "column_name": "id",
+      "data_type": "integer",
+      "is_nullable": "NO", 
+      "column_default": "nextval('user_model_id_seq'::regclass)",
+      "character_maximum_length": null,
+      "numeric_precision": 32,
+      "numeric_scale": 0
+    },
+    {
+      "column_name": "email",
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null,
+      "numeric_precision": null,
+      "numeric_scale": null
+    }
+  ],
+  "constraints": [
+    {
+      "constraint_name": "PK_7d6bfa71f4d6a1fa0af1f688327", 
+      "constraint_type": "PRIMARY KEY",
+      "column_name": "id",
+      "foreign_table_name": null,
+      "foreign_column_name": null
+    },
+    {
+      "constraint_name": "UQ_864bd044bba869304084843358e",
+      "constraint_type": "UNIQUE",
+      "column_name": "email", 
+      "foreign_table_name": null,
+      "foreign_column_name": null
+    }
+  ]
+}
+```
+
+#### 사용 예시
+```typescript
+const fetchTableDetail = async (tableName: string) => {
+  const response = await fetch(`/sql-execute/table/${tableName}`);
+  const tableDetail = await response.json();
+  
+  // Primary Key 찾기
+  const primaryKey = tableDetail.constraints.find(
+    c => c.constraint_type === 'PRIMARY KEY'
+  )?.column_name;
+  
+  // Foreign Key 관계 찾기
+  const foreignKeys = tableDetail.constraints.filter(
+    c => c.constraint_type === 'FOREIGN KEY'
+  );
+  
+  return { tableDetail, primaryKey, foreignKeys };
+};
+```
+
+---
+
+## 🔗 4. 테이블 관계 정보 조회 API
+
+### 📌 GET `/sql-execute/relationships`
+모든 Foreign Key 관계 정보를 조회하여 ERD 생성에 활용할 수 있습니다.
+
+#### 요청 데이터
+없음 (GET 요청)
+
+#### 응답 데이터
+```typescript
+interface RelationshipResponse {
+  source_table: string;       // 참조하는 테이블
+  source_column: string;      // 참조하는 컬럼
+  target_table: string;       // 참조되는 테이블
+  target_column: string;      // 참조되는 컬럼
+  constraint_name: string;    // 제약조건명
+}
+
+type RelationshipsResponse = RelationshipResponse[];
+```
+
+#### 실제 응답 예시
+```json
+[
+  {
+    "source_table": "file_upload_model",
+    "source_column": "liveId", 
+    "target_table": "live_model",
+    "target_column": "liveId",
+    "constraint_name": "FK_36179e869943778c12134acd6c8"
+  },
+  {
+    "source_table": "play_ticket_sale_model",
+    "source_column": "playUploadId",
+    "target_table": "file_upload_model", 
+    "target_column": "id",
+    "constraint_name": "FK_c0f30cc914ad13e656435fe81e2"
+  }
+]
+```
+
+#### 사용 예시
+```typescript
+const fetchRelationships = async () => {
+  const response = await fetch('/sql-execute/relationships');
+  const relationships = await response.json();
+  
+  // 테이블별 관계 맵 생성
+  const relationMap = new Map();
+  relationships.forEach(rel => {
+    if (!relationMap.has(rel.source_table)) {
+      relationMap.set(rel.source_table, []);
+    }
+    relationMap.get(rel.source_table).push({
+      targetTable: rel.target_table,
+      sourceColumn: rel.source_column,
+      targetColumn: rel.target_column
+    });
+  });
+  
+  return relationMap;
+};
+```
+
+---
+
+## ⚡ 5. SQL 쿼리 실행 API
 
 ### 📌 POST `/sql-execute`
 SQL SELECT 쿼리를 안전하게 실행합니다.
@@ -141,83 +376,9 @@ interface SqlErrorResponse {
 
 ---
 
-## 📝 사용 예시
-
-### **1. 기본 사용자 조회**
-```typescript
-const basicUserQuery = {
-  query: "SELECT id, email, name, role FROM user_model LIMIT 5;"
-};
-
-// 응답:
-{
-  "success": true,
-  "results": [
-    {"id": 1, "email": "admin", "name": "admin", "role": 1},
-    {"id": 5, "email": "cja@librarycompany.co.kr", "name": "채진아", "role": 0}
-  ],
-  "rowCount": 2,
-  "executionTime": 17
-}
-```
-
-### **2. 복잡한 뷰 조회**
-```typescript
-const complexViewQuery = {
-  query: `SELECT "liveName", "티켓판매일매출", "latestRecordDate" 
-          FROM view_llm_play_daily 
-          WHERE "티켓판매일매출" > 5000000 
-          ORDER BY "티켓판매일매출" DESC 
-          LIMIT 10;`
-};
-
-// 응답:
-{
-  "success": true,
-  "results": [
-    {
-      "liveName": "뮤지컬〈오늘 밤, 세계에서 이 사랑이 사라진다 해도〉",
-      "티켓판매일매출": 9169500,
-      "latestRecordDate": "2025-07-06T15:00:00.000Z"
-    }
-  ],
-  "rowCount": 1,
-  "executionTime": 27
-}
-```
-
-### **3. 집계 쿼리**
-```typescript
-const aggregateQuery = {
-  query: `SELECT 
-            COUNT(*) as total_users,
-            COUNT(CASE WHEN role = 0 THEN 1 END) as masters,
-            COUNT(CASE WHEN role = 1 THEN 1 END) as admins,
-            COUNT(CASE WHEN role = 2 THEN 1 END) as normal_users
-          FROM user_model;`
-};
-
-// 응답:
-{
-  "success": true,
-  "results": [
-    {
-      "total_users": 5,
-      "masters": 1,
-      "admins": 2, 
-      "normal_users": 2
-    }
-  ],
-  "rowCount": 1,
-  "executionTime": 12
-}
-```
-
----
-
 ## 💻 프론트엔드 구현 가이드
 
-### **1. API 호출 헬퍼 함수**
+### **1. 확장된 API 호출 헬퍼 함수**
 ```typescript
 class SqlViewerApi {
   private baseUrl: string;
@@ -231,11 +392,28 @@ class SqlViewerApi {
   // 테이블 목록 조회
   async getTables(): Promise<string[]> {
     const response = await fetch(`${this.baseUrl}/sql-execute/tables`);
-    
-    if (!response.ok) {
-      throw new Error('테이블 목록 조회 실패');
-    }
-    
+    if (!response.ok) throw new Error('테이블 목록 조회 실패');
+    return response.json();
+  }
+
+  // 🆕 전체 스키마 정보 조회
+  async getSchema(): Promise<TableSchema[]> {
+    const response = await fetch(`${this.baseUrl}/sql-execute/schema`);
+    if (!response.ok) throw new Error('스키마 정보 조회 실패');
+    return response.json();
+  }
+
+  // 🆕 특정 테이블 상세 정보 조회
+  async getTableDetail(tableName: string): Promise<TableDetailResponse> {
+    const response = await fetch(`${this.baseUrl}/sql-execute/table/${tableName}`);
+    if (!response.ok) throw new Error(`테이블 ${tableName} 정보 조회 실패`);
+    return response.json();
+  }
+
+  // 🆕 테이블 관계 정보 조회
+  async getRelationships(): Promise<RelationshipResponse[]> {
+    const response = await fetch(`${this.baseUrl}/sql-execute/relationships`);
+    if (!response.ok) throw new Error('테이블 관계 정보 조회 실패');
     return response.json();
   }
 
@@ -243,161 +421,143 @@ class SqlViewerApi {
   async executeQuery(query: string): Promise<SqlSuccessResponse> {
     const response = await fetch(`${this.baseUrl}/sql-execute`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })
     });
 
     const result = await response.json();
-
     if (!result.success) {
       throw new SqlError(result.error, result.code);
     }
-
     return result;
-  }
-}
-
-// 커스텀 에러 클래스
-class SqlError extends Error {
-  constructor(message: string, public code?: string) {
-    super(message);
-    this.name = 'SqlError';
   }
 }
 ```
 
-### **2. React 컴포넌트 예시**
+### **2. 스키마 브라우저 컴포넌트**
 ```typescript
 import React, { useState, useEffect } from 'react';
 
-const SqlViewer: React.FC = () => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
+const SchemaViewer: React.FC<{ onSelectTable: (tableName: string) => void }> = ({ onSelectTable }) => {
+  const [schema, setSchema] = useState<TableSchema[]>([]);
+  const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [tableDetail, setTableDetail] = useState<TableDetailResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tables, setTables] = useState<string[]>([]);
   
   const sqlApi = new SqlViewerApi();
 
-  // 컴포넌트 마운트 시 테이블 목록 로드
   useEffect(() => {
-    loadTables();
+    loadSchema();
   }, []);
 
-  const loadTables = async () => {
+  const loadSchema = async () => {
     try {
-      const tableList = await sqlApi.getTables();
-      setTables(tableList);
-    } catch (err) {
-      console.error('테이블 목록 로드 실패:', err);
+      const schemaData = await sqlApi.getSchema();
+      setSchema(schemaData);
+    } catch (error) {
+      console.error('스키마 로드 실패:', error);
     }
   };
 
-  const executeQuery = async () => {
-    if (!query.trim()) {
-      setError('쿼리를 입력해주세요.');
-      return;
-    }
-
+  const handleTableClick = async (tableName: string) => {
+    setSelectedTable(tableName);
     setLoading(true);
-    setError(null);
     
     try {
-      const result = await sqlApi.executeQuery(query);
-      setResults(result.results);
-      console.log(`${result.rowCount}행 조회됨 (${result.executionTime}ms)`);
-    } catch (err) {
-      if (err instanceof SqlError) {
-        setError(err.message);
-      } else {
-        setError('쿼리 실행 중 오류가 발생했습니다.');
-      }
-      setResults([]);
+      const detail = await sqlApi.getTableDetail(tableName);
+      setTableDetail(detail);
+      onSelectTable(tableName);
+    } catch (error) {
+      console.error('테이블 상세 정보 로드 실패:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const insertTableName = (tableName: string) => {
-    setQuery(prev => prev + tableName);
+  const getColumnTypeIcon = (dataType: string) => {
+    if (dataType.includes('integer')) return '🔢';
+    if (dataType.includes('character') || dataType.includes('text')) return '📝';
+    if (dataType.includes('boolean')) return '☑️';
+    if (dataType.includes('timestamp') || dataType.includes('date')) return '📅';
+    if (dataType.includes('ARRAY')) return '📋';
+    return '❓';
   };
 
   return (
-    <div className="sql-viewer">
-      {/* 테이블 목록 */}
-      <div className="tables-section">
-        <h3>📋 사용 가능한 테이블</h3>
-        <div className="table-buttons">
-          {tables.map(table => (
-            <button
-              key={table}
-              onClick={() => insertTableName(table)}
-              className="table-button"
+    <div className="schema-viewer">
+      <div className="tables-list">
+        <h3>📋 테이블 목록 ({schema.length}개)</h3>
+        <div className="table-grid">
+          {schema.map(table => (
+            <div
+              key={table.tableName}
+              className={`table-card ${selectedTable === table.tableName ? 'selected' : ''}`}
+              onClick={() => handleTableClick(table.tableName)}
             >
-              {table}
-            </button>
+              <div className="table-name">{table.tableName}</div>
+              <div className="column-count">{table.columns.length} 컬럼</div>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* 쿼리 입력 */}
-      <div className="query-section">
-        <h3>💻 SQL 쿼리</h3>
-        <textarea
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="SELECT * FROM user_model LIMIT 10;"
-          rows={8}
-          className="query-input"
-        />
-        <button 
-          onClick={executeQuery} 
-          disabled={loading}
-          className="execute-button"
-        >
-          {loading ? '실행 중...' : '🚀 쿼리 실행'}
-        </button>
-      </div>
+      {selectedTable && (
+        <div className="table-detail">
+          <h3>🏗️ {selectedTable} 구조</h3>
+          {loading ? (
+            <div>로딩 중...</div>
+          ) : tableDetail ? (
+            <div>
+              <div className="columns-list">
+                <h4>📊 컬럼 정보</h4>
+                <table className="columns-table">
+                  <thead>
+                    <tr>
+                      <th>컬럼명</th>
+                      <th>타입</th>
+                      <th>NULL</th>
+                      <th>기본값</th>
+                      <th>제약</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tableDetail.columns.map(column => {
+                      const constraint = tableDetail.constraints.find(
+                        c => c.column_name === column.column_name
+                      );
+                      return (
+                        <tr key={column.column_name}>
+                          <td>
+                            {getColumnTypeIcon(column.data_type)} {column.column_name}
+                          </td>
+                          <td>{column.data_type}</td>
+                          <td>{column.is_nullable === 'YES' ? '✅' : '❌'}</td>
+                          <td>{column.column_default || '-'}</td>
+                          <td>{constraint?.constraint_type || '-'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-      {/* 에러 표시 */}
-      {error && (
-        <div className="error-section">
-          <h3>❌ 오류</h3>
-          <p className="error-message">{error}</p>
-        </div>
-      )}
-
-      {/* 결과 표시 */}
-      {results.length > 0 && (
-        <div className="results-section">
-          <h3>📊 쿼리 결과 ({results.length}행)</h3>
-          <div className="results-table">
-            <table>
-              <thead>
-                <tr>
-                  {Object.keys(results[0]).map(key => (
-                    <th key={key}>{key}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((row, index) => (
-                  <tr key={index}>
-                    {Object.values(row).map((value, idx) => (
-                      <td key={idx}>
-                        {typeof value === 'object' 
-                          ? JSON.stringify(value) 
-                          : String(value)
-                        }
-                      </td>
+              {tableDetail.constraints.length > 0 && (
+                <div className="constraints-list">
+                  <h4>🔗 제약조건</h4>
+                  <ul>
+                    {tableDetail.constraints.map(constraint => (
+                      <li key={constraint.constraint_name}>
+                        <strong>{constraint.constraint_type}</strong>: {constraint.column_name}
+                        {constraint.foreign_table_name && (
+                          <span> → {constraint.foreign_table_name}.{constraint.foreign_column_name}</span>
+                        )}
+                      </li>
                     ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       )}
     </div>
@@ -405,77 +565,273 @@ const SqlViewer: React.FC = () => {
 };
 ```
 
-### **3. 유용한 쿼리 예제 제공**
+### **3. SQL 자동완성 기능**
 ```typescript
-const EXAMPLE_QUERIES = [
-  {
-    name: '사용자 목록',
-    query: 'SELECT id, email, name, role FROM user_model LIMIT 10;'
-  },
-  {
-    name: '공연 목록', 
-    query: 'SELECT "liveId", "liveName", category, "isLive" FROM live_model WHERE "isLive" = true;'
-  },
-  {
-    name: '최근 업로드 파일',
-    query: 'SELECT "fileName", "recordDate", "uploadDate" FROM file_upload_model ORDER BY "uploadDate" DESC LIMIT 10;'
-  },
-  {
-    name: '일일 매출 집계',
-    query: 'SELECT "liveName", SUM("티켓판매일매출") as total_sales FROM view_llm_play_daily GROUP BY "liveName" ORDER BY total_sales DESC;'
-  }
-];
+const SqlAutoComplete: React.FC<{
+  query: string;
+  onQueryChange: (query: string) => void;
+}> = ({ query, onQueryChange }) => {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [schema, setSchema] = useState<TableSchema[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-// 예제 쿼리 버튼 컴포넌트
-const ExampleQueries: React.FC<{ onSelectQuery: (query: string) => void }> = ({ onSelectQuery }) => (
-  <div className="example-queries">
-    <h3>📝 예제 쿼리</h3>
-    {EXAMPLE_QUERIES.map((example, index) => (
-      <button
-        key={index}
-        onClick={() => onSelectQuery(example.query)}
-        className="example-button"
-      >
-        {example.name}
-      </button>
-    ))}
-  </div>
-);
+  const sqlApi = new SqlViewerApi();
+
+  useEffect(() => {
+    sqlApi.getSchema().then(setSchema);
+  }, []);
+
+  const generateSuggestions = (currentQuery: string) => {
+    const words = currentQuery.toLowerCase().split(/\s+/);
+    const lastWord = words[words.length - 1];
+
+    const suggestions: string[] = [];
+
+    // FROM 다음에 테이블명 제안
+    if (words.includes('from') && !words.includes('where')) {
+      const tableNames = schema.map(t => t.tableName);
+      suggestions.push(...tableNames.filter(name => 
+        name.toLowerCase().includes(lastWord)
+      ));
+    }
+
+    // SELECT 다음에 컬럼명 제안
+    if (words.includes('select') && !words.includes('from')) {
+      schema.forEach(table => {
+        table.columns.forEach(col => {
+          if (col.column_name.toLowerCase().includes(lastWord)) {
+            suggestions.push(col.column_name);
+          }
+        });
+      });
+    }
+
+    return suggestions.slice(0, 10); // 최대 10개
+  };
+
+  const handleQueryChange = (newQuery: string) => {
+    onQueryChange(newQuery);
+    
+    if (newQuery.trim()) {
+      const newSuggestions = generateSuggestions(newQuery);
+      setSuggestions(newSuggestions);
+      setShowSuggestions(newSuggestions.length > 0);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const applySuggestion = (suggestion: string) => {
+    const words = query.split(/\s+/);
+    words[words.length - 1] = suggestion;
+    onQueryChange(words.join(' ') + ' ');
+    setShowSuggestions(false);
+  };
+
+  return (
+    <div className="sql-autocomplete">
+      <textarea
+        value={query}
+        onChange={(e) => handleQueryChange(e.target.value)}
+        placeholder="SELECT * FROM user_model LIMIT 10;"
+        className="sql-input"
+      />
+      
+      {showSuggestions && (
+        <div className="suggestions-dropdown">
+          {suggestions.map((suggestion, index) => (
+            <div
+              key={index}
+              className="suggestion-item"
+              onClick={() => applySuggestion(suggestion)}
+            >
+              {suggestion}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### **4. ERD 시각화 컴포넌트**
+```typescript
+const ErdViewer: React.FC = () => {
+  const [relationships, setRelationships] = useState<RelationshipResponse[]>([]);
+  const [schema, setSchema] = useState<TableSchema[]>([]);
+
+  const sqlApi = new SqlViewerApi();
+
+  useEffect(() => {
+    Promise.all([
+      sqlApi.getRelationships(),
+      sqlApi.getSchema()
+    ]).then(([rels, schemaData]) => {
+      setRelationships(rels);
+      setSchema(schemaData);
+    });
+  }, []);
+
+  const generateErdData = () => {
+    // Mermaid ERD 문법 생성
+    let mermaid = 'erDiagram\n';
+    
+    schema.forEach(table => {
+      mermaid += `  ${table.tableName} {\n`;
+      table.columns.forEach(col => {
+        const type = col.data_type.replace(/\s+/g, '_');
+        const key = col.key_type ? ` ${col.key_type}` : '';
+        mermaid += `    ${type} ${col.column_name}${key}\n`;
+      });
+      mermaid += '  }\n';
+    });
+
+    relationships.forEach(rel => {
+      mermaid += `  ${rel.target_table} ||--o{ ${rel.source_table} : "has"\n`;
+    });
+
+    return mermaid;
+  };
+
+  return (
+    <div className="erd-viewer">
+      <h3>🗺️ 데이터베이스 ERD</h3>
+      <div className="relationship-summary">
+        <p>📊 {schema.length}개 테이블, {relationships.length}개 관계</p>
+      </div>
+      
+      <div className="relationships-list">
+        <h4>🔗 테이블 관계</h4>
+        {relationships.map((rel, index) => (
+          <div key={index} className="relationship-item">
+            <span className="source">{rel.source_table}</span>
+            <span className="arrow">→</span>
+            <span className="target">{rel.target_table}</span>
+            <span className="columns">
+              ({rel.source_column} → {rel.target_column})
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Mermaid 다이어그램 렌더링 영역 */}
+      <div className="mermaid-diagram">
+        <pre>{generateErdData()}</pre>
+      </div>
+    </div>
+  );
+};
 ```
 
 ---
 
-## 🎨 CSS 스타일 가이드
+## 🎨 확장된 CSS 스타일
 
 ```css
-.sql-viewer {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.table-buttons {
+/* 스키마 뷰어 스타일 */
+.schema-viewer {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.table-button {
-  padding: 6px 12px;
-  background: #f0f0f0;
+.tables-list {
+  flex: 1;
+  min-width: 300px;
+}
+
+.table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.table-card {
+  padding: 12px;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.table-card:hover {
+  border-color: #007bff;
+  box-shadow: 0 2px 8px rgba(0,123,255,0.1);
+}
+
+.table-card.selected {
+  border-color: #007bff;
+  background: #f8f9ff;
+}
+
+.table-name {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.column-count {
   font-size: 12px;
+  color: #666;
 }
 
-.table-button:hover {
-  background: #e0e0e0;
+.table-detail {
+  flex: 2;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
 }
 
-.query-input {
+.columns-table {
   width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  background: white;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.columns-table th,
+.columns-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.columns-table th {
+  background: #f1f3f4;
+  font-weight: 600;
+}
+
+.constraints-list {
+  margin-top: 20px;
+}
+
+.constraints-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.constraints-list li {
+  padding: 6px 12px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+/* 자동완성 스타일 */
+.sql-autocomplete {
+  position: relative;
+}
+
+.sql-input {
+  width: 100%;
+  min-height: 120px;
   padding: 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -484,151 +840,203 @@ const ExampleQueries: React.FC<{ onSelectQuery: (query: string) => void }> = ({ 
   resize: vertical;
 }
 
-.execute-button {
-  padding: 12px 24px;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  margin-top: 10px;
-}
-
-.execute-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-.error-message {
-  padding: 12px;
-  background: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
-}
-
-.results-table {
-  overflow-x: auto;
-  margin-top: 16px;
-}
-
-.results-table table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.results-table th,
-.results-table td {
-  padding: 8px 12px;
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
   border: 1px solid #ddd;
-  text-align: left;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
 }
 
-.results-table th {
+.suggestion-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.suggestion-item:hover {
   background: #f8f9fa;
+}
+
+/* ERD 뷰어 스타일 */
+.erd-viewer {
+  padding: 20px;
+}
+
+.relationship-summary {
+  padding: 12px;
+  background: #e3f2fd;
+  border-radius: 6px;
+  margin-bottom: 20px;
+}
+
+.relationships-list {
+  margin-bottom: 20px;
+}
+
+.relationship-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.source, .target {
+  font-weight: 600;
+  color: #333;
+}
+
+.arrow {
+  color: #007bff;
   font-weight: bold;
 }
 
-.results-table tr:nth-child(even) {
+.columns {
+  font-size: 12px;
+  color: #666;
+}
+
+.mermaid-diagram {
   background: #f8f9fa;
+  padding: 20px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.mermaid-diagram pre {
+  margin: 0;
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
 }
 ```
 
 ---
 
-## 🚨 에러 코드 및 처리
+## 🎯 확장된 활용 시나리오
 
-### **주요 에러 코드**
-| **에러 코드** | **설명** | **해결 방법** |
-|---|---|---|
-| `INVALID_QUERY_TYPE` | SELECT 문 이외의 쿼리 | SELECT 문만 사용 |
-| `DANGEROUS_KEYWORD` | 위험한 키워드 포함 | 데이터 조회 쿼리만 작성 |
-| `EXECUTION_TIMEOUT` | 실행 시간 초과 (30초) | 쿼리 최적화 또는 범위 축소 |
-| `SYNTAX_ERROR` | SQL 문법 오류 | 쿼리 문법 확인 |
-| `OBJECT_NOT_FOUND` | 존재하지 않는 테이블/컬럼 | 테이블명과 컬럼명 확인 |
-| `PERMISSION_DENIED` | 권한 없음 | 접근 가능한 테이블만 조회 |
-
-### **에러 처리 예시**
+### **1. 스키마 기반 쿼리 작성**
 ```typescript
-const handleSqlError = (error: SqlError) => {
-  switch (error.code) {
-    case 'INVALID_QUERY_TYPE':
-      return '⚠️ SELECT 문만 사용할 수 있습니다.';
-    case 'EXECUTION_TIMEOUT':
-      return '⏱️ 쿼리 실행 시간이 초과되었습니다. 조건을 추가하여 범위를 줄여보세요.';
-    case 'SYNTAX_ERROR':
-      return '❌ SQL 문법에 오류가 있습니다. 쿼리를 다시 확인해주세요.';
-    case 'OBJECT_NOT_FOUND':
-      return '🔍 존재하지 않는 테이블 또는 컬럼입니다.';
-    default:
-      return `❌ ${error.message}`;
+// 테이블 구조를 알고 적절한 JOIN 쿼리 작성
+const smartJoinQuery = `
+SELECT 
+  u.name as user_name,
+  l."liveName" as live_name,
+  f."fileName" as uploaded_file
+FROM user_model u
+JOIN live_model l ON u."liveNameList" @> ARRAY[l."liveName"]
+JOIN file_upload_model f ON l."liveId" = f."liveId"
+WHERE u.role <= 1
+LIMIT 20;
+`;
+```
+
+### **2. 데이터 타입별 쿼리 최적화**
+```typescript
+// 날짜 타입 컬럼 활용
+const dateRangeQuery = `
+SELECT 
+  "liveName",
+  COUNT(*) as upload_count,
+  MIN("recordDate") as first_upload,
+  MAX("recordDate") as last_upload
+FROM file_upload_model f
+JOIN live_model l ON f."liveId" = l."liveId"
+WHERE f."recordDate" >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY "liveName"
+ORDER BY upload_count DESC;
+`;
+```
+
+### **3. 관계 기반 복합 쿼리**
+```typescript
+// FK 관계를 활용한 데이터 추적
+const relationshipQuery = `
+SELECT 
+  l."liveName",
+  f."fileName",
+  pts.sales as ticket_sales,
+  pss."paidSeatTot" as seats_sold
+FROM live_model l
+JOIN file_upload_model f ON l."liveId" = f."liveId"
+JOIN play_ticket_sale_model pts ON f.id = pts."playUploadId"
+JOIN play_show_sale_model pss ON f.id = pss."playUploadId"
+WHERE l."isLive" = true
+  AND pts."salesDate" = pss."showDateTime"::date
+LIMIT 50;
+`;
+```
+
+---
+
+## 📈 성능 최적화 가이드
+
+### **1. 스키마 정보 캐싱**
+```typescript
+class SchemaCache {
+  private static cache = new Map<string, any>();
+  private static lastUpdated = new Map<string, number>();
+  private static CACHE_DURATION = 5 * 60 * 1000; // 5분
+
+  static async get<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+    const now = Date.now();
+    const lastUpdate = this.lastUpdated.get(key) || 0;
+    
+    if (this.cache.has(key) && (now - lastUpdate) < this.CACHE_DURATION) {
+      return this.cache.get(key);
+    }
+    
+    const data = await fetcher();
+    this.cache.set(key, data);
+    this.lastUpdated.set(key, now);
+    return data;
   }
+}
+
+// 사용법
+const getSchema = () => SchemaCache.get('schema', () => sqlApi.getSchema());
+```
+
+### **2. 점진적 스키마 로딩**
+```typescript
+const useSchemaLoader = () => {
+  const [tables, setTables] = useState<string[]>([]);
+  const [loadedTables, setLoadedTables] = useState<Set<string>>(new Set());
+  const [tableDetails, setTableDetails] = useState<Map<string, any>>(new Map());
+
+  // 1단계: 테이블 목록만 먼저 로드
+  useEffect(() => {
+    sqlApi.getTables().then(setTables);
+  }, []);
+
+  // 2단계: 필요할 때만 상세 정보 로드
+  const loadTableDetail = async (tableName: string) => {
+    if (loadedTables.has(tableName)) return;
+    
+    const detail = await sqlApi.getTableDetail(tableName);
+    setTableDetails(prev => new Map(prev).set(tableName, detail));
+    setLoadedTables(prev => new Set(prev).add(tableName));
+  };
+
+  return { tables, tableDetails, loadTableDetail };
 };
 ```
 
 ---
 
-## ⚠️ 주의사항
+이제 프론트엔드에서 **완벽한 데이터베이스 스키마 정보**를 활용하여 **지능적인 SQL Viewer**를 구현할 수 있습니다! 🚀
 
-### **1. 데이터베이스 부하 방지**
-- 대용량 테이블 조회 시 반드시 `LIMIT` 사용
-- `JOIN` 쿼리 최소화
-- 인덱스가 있는 컬럼으로 `WHERE` 조건 작성
-
-### **2. 민감 정보 처리**
-- 패스워드 등 민감한 컬럼 조회 주의
-- 결과 데이터를 로그에 저장하지 않기
-- 개인정보 관련 쿼리 실행 시 주의
-
-### **3. 사용자 경험 개선**
-- 쿼리 실행 중 로딩 상태 표시
-- 에러 메시지를 사용자 친화적으로 변환
-- 쿼리 히스토리 기능 제공 권장
-
-### **4. 성능 최적화**
-- 테이블 목록은 컴포넌트 마운트 시 1회만 로드
-- 쿼리 결과가 큰 경우 가상화 테이블 사용
-- 자주 사용하는 쿼리는 북마크 기능 제공
-
----
-
-## 🎯 활용 시나리오
-
-### **1. 데이터 탐색 및 분석**
-```sql
--- 최근 7일간 매출 추이
-SELECT DATE("recordDate") as date, SUM("티켓판매일매출") as daily_sales 
-FROM view_llm_play_daily 
-WHERE "recordDate" >= CURRENT_DATE - INTERVAL '7 days'
-GROUP BY DATE("recordDate") 
-ORDER BY date;
-```
-
-### **2. 관리자 대시보드 데이터**
-```sql
--- 사용자 통계
-SELECT 
-  role,
-  COUNT(*) as user_count,
-  COUNT(CASE WHEN status = true THEN 1 END) as active_users
-FROM user_model 
-GROUP BY role 
-ORDER BY role;
-```
-
-### **3. 공연 현황 모니터링**
-```sql
--- 현재 진행 중인 공연 목록
-SELECT "liveName", "showStartDate", "showEndDate", category
-FROM live_model 
-WHERE "isLive" = true 
-  AND "showStartDate" <= CURRENT_DATE 
-  AND "showEndDate" >= CURRENT_DATE
-ORDER BY "showStartDate";
-```
-
----
-
-이 가이드를 참고하여 안전하고 효율적인 SQL Viewer 기능을 구현해주세요! 🚀 
+- ✅ **46개 테이블** 구조 정보
+- ✅ **컬럼 타입 및 제약조건** 
+- ✅ **테이블 관계 (ERD)** 정보
+- ✅ **SQL 자동완성** 기능
+- ✅ **스키마 브라우저** UI 

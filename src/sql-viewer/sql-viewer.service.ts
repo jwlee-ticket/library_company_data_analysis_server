@@ -136,4 +136,133 @@ export class SqlViewerService {
       return [];
     }
   }
+
+  // 🆕 테이블 스키마 정보 조회
+  async getTableSchema(tableName: string): Promise<any> {
+    try {
+      const columnInfo = await this.dataSource.query(`
+        SELECT 
+          column_name,
+          data_type,
+          is_nullable,
+          column_default,
+          character_maximum_length,
+          numeric_precision,
+          numeric_scale
+        FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+          AND table_name = $1
+        ORDER BY ordinal_position
+      `, [tableName]);
+
+      const constraints = await this.dataSource.query(`
+        SELECT 
+          tc.constraint_name,
+          tc.constraint_type,
+          kcu.column_name,
+          ccu.table_name AS foreign_table_name,
+          ccu.column_name AS foreign_column_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+        LEFT JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name
+        WHERE tc.table_schema = 'public' 
+          AND tc.table_name = $1
+      `, [tableName]);
+
+      return {
+        tableName,
+        columns: columnInfo,
+        constraints: constraints
+      };
+    } catch (error) {
+      this.logger.error(`테이블 스키마 조회 실패 (${tableName}):`, error);
+      throw error;
+    }
+  }
+
+  // 🆕 전체 스키마 정보 조회 (간소화된 버전)
+  async getAllTablesSchema(): Promise<any> {
+    try {
+      const tablesInfo = await this.dataSource.query(`
+        SELECT 
+          t.table_name,
+          c.column_name,
+          c.data_type,
+          c.is_nullable,
+          c.column_default,
+          CASE 
+            WHEN tc.constraint_type = 'PRIMARY KEY' THEN 'PK'
+            WHEN tc.constraint_type = 'FOREIGN KEY' THEN 'FK'
+            ELSE NULL 
+          END as key_type,
+          ccu.table_name AS references_table,
+          ccu.column_name AS references_column
+        FROM information_schema.tables t
+        LEFT JOIN information_schema.columns c ON t.table_name = c.table_name
+        LEFT JOIN information_schema.key_column_usage kcu ON c.table_name = kcu.table_name AND c.column_name = kcu.column_name
+        LEFT JOIN information_schema.table_constraints tc ON kcu.constraint_name = tc.constraint_name
+        LEFT JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name
+        WHERE t.table_schema = 'public'
+          AND c.table_schema = 'public'
+        ORDER BY t.table_name, c.ordinal_position
+      `);
+
+      // 테이블별로 그룹화
+      const schemaMap = new Map();
+      
+      tablesInfo.forEach(row => {
+        if (!schemaMap.has(row.table_name)) {
+          schemaMap.set(row.table_name, {
+            tableName: row.table_name,
+            columns: []
+          });
+        }
+        
+        const table = schemaMap.get(row.table_name);
+        const existingColumn = table.columns.find(col => col.column_name === row.column_name);
+        
+        if (!existingColumn) {
+          table.columns.push({
+            column_name: row.column_name,
+            data_type: row.data_type,
+            is_nullable: row.is_nullable,
+            column_default: row.column_default,
+            key_type: row.key_type,
+            references_table: row.references_table,
+            references_column: row.references_column
+          });
+        }
+      });
+
+      return Array.from(schemaMap.values());
+    } catch (error) {
+      this.logger.error('전체 스키마 조회 실패:', error);
+      throw error;
+    }
+  }
+
+  // 🆕 테이블 관계 정보 조회 (ERD용)
+  async getTableRelationships(): Promise<any> {
+    try {
+      const relationships = await this.dataSource.query(`
+        SELECT DISTINCT
+          tc.table_name AS source_table,
+          kcu.column_name AS source_column,
+          ccu.table_name AS target_table,
+          ccu.column_name AS target_column,
+          tc.constraint_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+        JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_schema = 'public'
+        ORDER BY tc.table_name
+      `);
+
+      return relationships;
+    } catch (error) {
+      this.logger.error('테이블 관계 조회 실패:', error);
+      throw error;
+    }
+  }
 } 
