@@ -61,7 +61,7 @@ export class AiChatService {
 
       // OpenAI API 호출
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: messages as any,
         temperature: 0.7,
         max_tokens: 1000,
