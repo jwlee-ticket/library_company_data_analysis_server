@@ -187,33 +187,35 @@ export class AiChatService {
       // 사용 가능한 모든 테이블 목록 생성
       const allowedTables = allTablesSchema.map(table => table.tableName);
       
-      // 주요 테이블 컬럼 정보 요약 (토큰 절약)
-      const mainTableSummary = allTablesSchema
-        .filter(table => ['user_model', 'live_model', 'play_ticket_sale_model', 'concert_ticket_sale_model', 'calendar_model'].includes(table.tableName))
+      // 모든 테이블의 컬럼 정보 생성 (간결하게)
+      const tableStructures = allTablesSchema
         .map(table => {
+          // 핵심 컬럼 정보만 포함 (PK, FK, 주요 컬럼)
           const keyColumns = table.columns
-            .filter(col => col.key_type === 'PK' || ['id', 'liveId', 'recordDate', 'sales'].includes(col.column_name))
-            .map(col => `${col.column_name}(${col.data_type})`)
-            .slice(0, 5)
+            .map(col => {
+              let columnInfo = `${col.column_name}(${col.data_type})`;
+              if (col.key_type === 'PK') columnInfo += '[PK]';
+              if (col.key_type === 'FK') columnInfo += `[FK→${col.references_table}]`;
+              return columnInfo;
+            })
             .join(', ');
-          return `- ${table.tableName}: ${keyColumns}`;
+          
+          return `• ${table.tableName}:\n  ${keyColumns}`;
         })
-        .join('\n');
+        .join('\n\n');
 
       return `당신은 LibraryCompany의 데이터베이스 SQL 전문가입니다.
 
-**사용 가능한 테이블 (총 ${allowedTables.length}개):**
-${allowedTables.join(', ')}
+**전체 데이터베이스 스키마 (총 ${allowedTables.length}개 테이블):**
 
-**주요 테이블 구조:**
-${mainTableSummary}
+${tableStructures}
 
 **뷰 테이블 카테고리:**
 - view_con_*: 콘서트 관련 분석 뷰
-- view_play_*: 연극 & 뮤지컬 전체 분석 뷰
-- view_llm_play_*: 연극 & 뮤지컬 LLM 분석 뷰 
+- view_play_*: 연극 & 뮤지컬 전체 분석 뷰  
+- view_llm_play_*: 연극 & 뮤지컬 LLM 분석 뷰
 
-역할:
+**역할:**
 1. 사용자의 자연어 요청을 정확한 SQL 쿼리로 변환
 2. SELECT 문만 생성 (데이터 조회만 허용)
 3. 자동으로 LIMIT 1000 추가 (성능 보호)
