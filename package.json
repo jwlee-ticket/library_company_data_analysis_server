@@ -38,6 +38,8 @@
     "axios": "^1.8.4",
     "cheerio": "^1.0.0",
     "chromedriver": "^134.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
     "date-fns": "^4.1.0",
     "express-formidable": "^1.2.0",
     "express-session": "^1.18.1",
@@ -53,6 +55,7 @@
     "selenium-webdriver": "^4.29.0",
     "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.20",
+    "uuid": "^11.1.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -66,6 +69,7 @@
     "@types/node": "^20.3.1",
     "@types/selenium-webdriver": "^4.1.28",
     "@types/supertest": "^2.0.12",
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.42.0",

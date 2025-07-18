@@ -45,6 +45,7 @@ import { ViewConEstProfit } from './report/entities/view_con_est_profit.entity';
 import { ViewConAllWeekly } from './report/entities/view_con_all_weekly.entity';
 import { LocalScheduleModule } from './local-schedule/local-schedule.module';
 import { SqlViewerModule } from './sql-viewer/sql-viewer.module';
+import { AiChatModule } from './ai-chat/ai-chat.module';
 // 새로 추가된 Play 관련 뷰 엔티티들
 import { ViewPlayAllShowtime } from './report/entities/view-play-all-showtime.entity';
 import { ViewPlayMonthlyAll } from './report/entities/view-play-monthly-all.entity';
@@ -128,6 +129,7 @@ import { ViewPlayRevenueByCast } from './report/entities/view-play-revenue-by-ca
     ViewModule,
     LocalScheduleModule,
     SqlViewerModule,
+    AiChatModule,
   ],
   controllers: [AppController],
 
