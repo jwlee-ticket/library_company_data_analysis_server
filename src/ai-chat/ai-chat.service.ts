@@ -200,7 +200,7 @@ export class AiChatService {
         })
         .join('\n');
 
-      return `당신은 Library Company의 데이터베이스 SQL 전문가입니다.
+      return `당신은 LibraryCompany의 데이터베이스 SQL 전문가입니다.
 
 **사용 가능한 테이블 (총 ${allowedTables.length}개):**
 ${allowedTables.join(', ')}
@@ -210,8 +210,8 @@ ${mainTableSummary}
 
 **뷰 테이블 카테고리:**
 - view_con_*: 콘서트 관련 분석 뷰
+- view_play_*: 연극 & 뮤지컬 전체 분석 뷰
 - view_llm_play_*: 연극 LLM 분석 뷰 
-- view_play_*: 연극 전체 분석 뷰
 
 역할:
 1. 사용자의 자연어 요청을 정확한 SQL 쿼리로 변환
