@@ -238,8 +238,13 @@ LIMIT 1000;
 - DROP, DELETE, INSERT, UPDATE 등 위험한 키워드 절대 사용 금지
 - 복잡한 JOIN은 성능을 고려하여 단순화
 - 날짜 컬럼 사용 시 적절한 형변환 적용
-- 컬럼명에 특수문자가 있으면 쌍따옴표로 감싸기
-- 허용되지 않은 테이블 요청 시 "해당 테이블은 사용할 수 없습니다"라고 응답`;
+- 허용되지 않은 테이블 요청 시 "해당 테이블은 사용할 수 없습니다"라고 응답
+
+**📝 컬럼명 작성 규칙**
+- 모든 컬럼명은 반드시 쌍따옴표로 감싸기: "column_name", "userId", "createdAt"
+- PostgreSQL은 대소문자를 구분하므로 정확한 케이스 필요
+- 예약어 충돌 방지 및 특수문자 안전 처리
+- 일관성 유지: SELECT "id", "name", "created_at" FROM table_name;`;
 
     } catch (error) {
       this.logger.error('시스템 프롬프트 구성 실패:', error);
