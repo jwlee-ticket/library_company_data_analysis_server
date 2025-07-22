@@ -678,6 +678,267 @@ erDiagram
 - **단일 인스턴스 아키텍처**: 별도 DB 서버 없이 Docker 컨테이너로 운영
 - **스케일링 전략**: 트래픽 증가 시 점진적 업그레이드 가능
 
+### SQL Viewer 모듈 아키텍처
+
+```mermaid
+graph TB
+    subgraph "Frontend Interface"
+        A1["SQL Editor<br/>코드 하이라이팅<br/>자동완성"]
+        A2["테이블 브라우저<br/>스키마 탐색<br/>컬럼 정보"]
+        A3["결과 뷰어<br/>테이블/JSON<br/>데이터 내보내기"]
+    end
+    
+    subgraph "API Gateway"
+        B["SqlViewerController<br/>@Controller('sql-execute')<br/>Swagger 문서화"]
+    end
+    
+    subgraph "Security Layer"
+        C1["SqlSecurityGuard<br/>SQL 인젝션 방지<br/>위험 키워드 차단"]
+        C2["Query Validation<br/>SELECT 문만 허용<br/>LIMIT 자동 추가"]
+        C3["Schema Whitelist<br/>허용된 테이블만 접근<br/>시스템 테이블 차단"]
+    end
+    
+    subgraph "Business Logic"
+        D1["SqlViewerService<br/>쿼리 실행 엔진<br/>결과 포매팅"]
+        D2["Schema Inspector<br/>테이블 목록 조회<br/>컬럼 정보 분석"]
+        D3["Query Optimizer<br/>성능 최적화<br/>실행 계획 분석"]
+    end
+    
+    subgraph "Database Access"
+        E1["TypeORM Query Runner<br/>Raw SQL 실행<br/>트랜잭션 관리"]
+        E2["Connection Pool<br/>연결 관리<br/>타임아웃 처리"]
+    end
+    
+    subgraph "PostgreSQL Database"
+        F1["Production Tables<br/>LiveModel, UserModel<br/>Sales Data"]
+        F2["Analysis Views<br/>view_con_*, view_play_*<br/>view_llm_play_*"]
+        F3["Information Schema<br/>테이블 메타데이터<br/>컬럼 정보"]
+    end
+    
+    %% API Flow
+    A1 --> B
+    A2 --> B
+    A3 --> B
+    
+    %% Security Pipeline
+    B --> C1
+    C1 --> C2
+    C2 --> C3
+    
+    %% Business Logic
+    C3 --> D1
+    C3 --> D2
+    C3 --> D3
+    
+    %% Database Access
+    D1 --> E1
+    D2 --> E1
+    D3 --> E2
+    
+    %% Database Queries
+    E1 --> F1
+    E1 --> F2
+    E2 --> F3
+    
+    %% Response Flow
+    F1 --> E1
+    F2 --> E1
+    F3 --> E2
+    
+    E1 --> D1
+    E2 --> D2
+    
+    D1 --> A3
+    D2 --> A2
+    
+    %% Styling
+    classDef frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef api fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef security fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+    classDef business fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef database fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef storage fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    
+    class A1,A2,A3 frontend
+    class B api
+    class C1,C2,C3 security
+    class D1,D2,D3 business
+    class E1,E2 database
+    class F1,F2,F3 storage
+```
+
+### AI Chat 모듈 아키텍처
+
+```mermaid
+graph TB
+    subgraph "Frontend Interface"
+        A1["채팅 인터페이스<br/>실시간 메시징<br/>타이핑 인디케이터"]
+        A2["SQL 미리보기<br/>코드 하이라이팅<br/>복사/실행 버튼"]
+        A3["세션 관리<br/>채팅 이력<br/>검색/필터링"]
+    end
+    
+    subgraph "API Gateway"
+        B["AiChatController<br/>@Controller('ai-chat')<br/>RESTful Endpoints"]
+    end
+    
+    subgraph "Chat Management"
+        C1["Session Manager<br/>채팅 세션 생성<br/>메시지 이력 관리"]
+        C2["Message Handler<br/>메시지 검증<br/>응답 포매팅"]
+        C3["SQL Analyzer<br/>SQL 추출/검증<br/>코드 블록 파싱"]
+    end
+    
+    subgraph "AI Integration"
+        D1["AiChatService<br/>OpenAI API 연동<br/>GPT-4o 모델"]
+        D2["Prompt Builder<br/>시스템 프롬프트 구성<br/>스키마 컨텍스트"]
+        D3["Response Parser<br/>SQL 코드 추출<br/>설명 텍스트 분리"]
+    end
+    
+    subgraph "Database Context"
+        E1["Schema Loader<br/>전체 스키마 로드<br/>테이블/컬럼 정보"]
+        E2["Context Builder<br/>프롬프트 최적화<br/>관련 테이블 우선순위"]
+        E3["SQL Validator<br/>생성된 쿼리 검증<br/>보안 검사"]
+    end
+    
+    subgraph "SQL Execution Engine"
+        F1["SqlViewerService<br/>쿼리 실행 위임<br/>결과 반환"]
+        F2["Security Guard<br/>SQL 인젝션 방지<br/>SELECT 문만 허용"]
+        F3["Result Formatter<br/>데이터 포매팅<br/>에러 메시지 처리"]
+    end
+    
+    subgraph "External Services"
+        G1["OpenAI GPT-4o<br/>자연어 처리<br/>SQL 생성"]
+        G2["PostgreSQL<br/>스키마 정보<br/>쿼리 실행"]
+    end
+    
+    subgraph "Data Storage"
+        H1["Memory Storage<br/>채팅 세션 임시 저장<br/>메시지 캐시"]
+        H2["Schema Cache<br/>테이블 정보 캐싱<br/>성능 최적화"]
+    end
+    
+    %% Frontend Flow
+    A1 --> B
+    A2 --> B
+    A3 --> B
+    
+    %% Chat Management
+    B --> C1
+    B --> C2
+    B --> C3
+    
+    %% AI Processing
+    C1 --> D1
+    C2 --> D1
+    C3 --> D3
+    
+    D1 --> D2
+    D2 --> D3
+    
+    %% Database Context
+    D2 --> E1
+    D2 --> E2
+    D3 --> E3
+    
+    %% SQL Execution
+    E3 --> F1
+    F1 --> F2
+    F2 --> F3
+    
+    %% External Services
+    D1 --> G1
+    F1 --> G2
+    E1 --> G2
+    
+    %% Data Storage
+    C1 --> H1
+    E1 --> H2
+    
+    %% Response Flow
+    G1 --> D3
+    G2 --> F3
+    F3 --> C2
+    C2 --> A2
+    
+    H1 --> A3
+    H2 --> E2
+    
+    %% Styling
+    classDef frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef api fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef chat fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef ai fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef context fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef execution fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    classDef external fill:#fff8e1,stroke:#ffa000,stroke-width:2px
+    classDef storage fill:#f1f8e9,stroke:#558b2f,stroke-width:2px
+    
+    class A1,A2,A3 frontend
+    class B api
+    class C1,C2,C3 chat
+    class D1,D2,D3 ai
+    class E1,E2,E3 context
+    class F1,F2,F3 execution
+    class G1,G2 external
+    class H1,H2 storage
+```
+
+### SQL Viewer & AI Chat 통합 워크플로우
+
+```mermaid
+sequenceDiagram
+    participant U as 사용자
+    participant AC as AI Chat
+    participant SV as SQL Viewer
+    participant AI as OpenAI GPT-4o
+    participant DB as PostgreSQL
+
+    Note over U,DB: 1. 초기 설정 단계
+    AC->>DB: 전체 스키마 정보 로드
+    DB-->>AC: 테이블/컬럼 구조 반환
+    AC->>AC: 시스템 프롬프트 구성
+
+    Note over U,DB: 2. 사용자 질문 단계
+    U->>AC: "최근 일주일 매출 상위 5개 공연"
+    AC->>AC: 채팅 세션 관리
+    AC->>AI: 자연어 + 스키마 컨텍스트 전송
+    AI-->>AC: SQL 쿼리 + 설명 응답
+
+    Note over U,DB: 3. SQL 분석 및 검증
+    AC->>AC: SQL 코드 블록 추출
+    AC->>SV: SQL 보안 검증 요청
+    SV->>SV: 위험 키워드 검사
+    SV->>SV: SELECT 문 여부 확인
+    SV-->>AC: 검증 결과 반환
+
+    Note over U,DB: 4. 쿼리 실행 (선택사항)
+    AC-->>U: AI 응답 + SQL 코드 표시
+    U->>AC: "SQL 실행" 버튼 클릭
+    AC->>SV: 검증된 쿼리 실행 요청
+    SV->>DB: 안전한 쿼리 실행
+    DB-->>SV: 결과 데이터 반환
+    SV-->>AC: 포매팅된 결과
+    AC-->>U: 실행 결과 표시
+
+    Note over U,DB: 5. 세션 관리
+    AC->>AC: 메시지 이력 저장
+    AC->>AC: 세션 업데이트
+```
+
+### 주요 특징
+
+#### SQL Viewer 보안 메커니즘
+- **다단계 보안**: SecurityGuard → Validation → Whitelist 검증
+- **안전한 실행**: SELECT 문만 허용, 자동 LIMIT 추가
+- **스키마 보호**: 시스템 테이블 접근 차단
+
+#### AI Chat 지능형 기능
+- **컨텍스트 인식**: 전체 DB 스키마를 GPT-4o에게 제공
+- **실시간 검증**: 생성된 SQL의 보안성 즉시 확인
+
+#### 통합 연동 장점
+- **원클릭 실행**: AI 생성 SQL을 즉시 실행 가능
+- **안전성 보장**: 이중 검증으로 보안 위험 최소화
+- **사용자 경험**: 자연어 질문 → SQL 실행까지 seamless workflow
+
 ## API 엔드포인트
 
 ### 콘서트 관련 API
